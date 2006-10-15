@@ -190,6 +190,24 @@ sub _try_digest_fallback {
 	}
 }
 
+sub _args (\@;$) {
+	my ( $args, $odd ) = @_;
+
+	my ( $self, @args ) = @$args;
+
+	my %params;
+	if ( @args % 2 == 1 ) {
+		croak "The parameters must be an even sized list of key value pairs" unless defined $odd;
+		( my $odd_value, %params ) = @args;
+		croak "Can't provide the positional param in the named list as well" if exists $params{$odd};
+		$params{$odd} = $odd_value;
+	} else {
+		%params = @args;
+	}
+
+	return ( $self, %params );
+}
+
 sub _process_params {
 	my ( $self, $params, @required ) = @_;
 
@@ -218,7 +236,7 @@ sub _process_param {
 }
 
 sub cipher_object {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_;
 	
 	$self->_process_params( \%params, qw/
 		cipher
@@ -232,7 +250,7 @@ sub cipher_object {
 }
 
 sub digest_object {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_;
 
 	$self->_process_params( \%params, qw/
 		digest
@@ -244,7 +262,7 @@ sub digest_object {
 use tt;
 [% FOR f IN ["en", "de"] %]
 sub [% f %]crypt_string {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_, "string";
 
 	my $string = delete $params{string};
 	croak "You must provide the 'string' parameter" unless defined $string;
@@ -278,7 +296,7 @@ sub _maybe_[% f %]code {
 no tt;
 
 sub digest_string {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_, "string";
 
 	my $string = delete $params{string};
 	croak "You must provide the 'string' parameter" unless defined $string;
@@ -291,7 +309,7 @@ sub digest_string {
 }
 
 sub verify_hash {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_;
 
 	my $hash = delete $params{hash};
 	my $fatal = delete $params{fatal};
@@ -315,7 +333,7 @@ my @flags = qw/storable/;
 our $TAMPER_PROTECT_VERSION = 1;
 
 sub tamper_protected {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_, "data";
 
 	$self->_process_params( \%params, qw/
 		data
@@ -364,7 +382,7 @@ sub _flag_hash_to_int {
 }
 
 sub thaw_tamper_protected {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_, "string";
 
 	my $hashed_packed = $self->decrypt_string( %params );
 
@@ -419,7 +437,7 @@ sub _flag_int_to_hash {
 use tt
 [% FOR f IN ["en","de"] %]
 sub [% f %]code_string {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_, "string";
 
 	my $string = delete $params{string};
 	croak "You must provide the 'string' parameter" unless defined $string;
