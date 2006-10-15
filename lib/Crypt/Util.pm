@@ -113,7 +113,7 @@ sub _try_digest_fallback {
 	my %encoding_module = (
 		base64     => "MIME::Base64",
 		uri_base64 => "MIME::Base64",
-		base32     => "Convert::Base32",
+		base32     => "MIME::Base32",
 		uri_escape => "URI::Escape",
 	);
 
@@ -426,14 +426,14 @@ sub decode_string_uri_base64 {
 
 sub encode_string_base32 {
 	my ( $self, $string ) = @_;
-	require Convert::Base32;
-	Convert::Base32::encode_base32($string);
+	require MIME::Base32;
+	MIME::Base32::encode_rfc3548($string);
 }
 
 sub decode_string_base32 {
 	my ( $self, $base32 ) = @_;
-	require Convert::Base32;
-	Convert::Base32::decode_base32($base32);
+	require MIME::Base32;
+	MIME::Base32::decode_rfc3548(uc($base32));
 }
 
 sub encode_string_uri_escape {
