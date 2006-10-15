@@ -11,6 +11,8 @@ use Digest;
 use Crypt::CBC;
 use Storable;
 
+$Digest::MMAP{"RIPEMD160"} ||= $Digest::MMAP{"RIPEMD-160"} ||="Crypt::RIPEMD160";
+
 use Carp qw/croak/;
 
 our @DEFAULT_ACCESSORS = qw/
