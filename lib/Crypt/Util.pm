@@ -603,9 +603,9 @@ encoding into a URI safe string
 
 =item decode_string_hex $string
 
-=item encode_string_uri_escaping $string
+=item encode_string_uri_escape $string
 
-=item decode_string_uri_escaping $string
+=item decode_string_uri_escape $string
 
 =item encode_string_base64 $string
 
