@@ -108,7 +108,7 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 		@{ $self->{$list_method} || \@list };
 	};
 
-	my $type = ( $fallback =~ /(encoding)/ )[0] || $fallback;
+	my $type = ( $fallback =~ /(encoding|mode)/ )[0] || $fallback;
 	my $try = "_try_${type}_fallback";
 
 	my $fallback_sub = sub {
@@ -172,8 +172,7 @@ sub _try_digest_fallback {
 sub _try_mode_fallback {
 	my ( $self, $mode ) = @_;
 
-	(my $file = $mode) =~ s{::}{/}g;
-	$file = "Crypt/$file.pm";
+	(my $file = "Crypt::${mode}.pm") =~ s{::}{/}g;
 
 	local $@;
 	eval { require $file }; # yes it's portable
@@ -263,27 +262,67 @@ sub cipher_object {
 }
 
 sub cipher_object_cbc {
-	my ( $self, %params ) = @_;
+	my ( $self, %params ) = _args @_;
 
 	$self->_process_params( \%params, qw/cipher/ );
+
+	require Crypt::CBC;
 
 	Crypt::CBC->new(
 		-cipher      => $params{cipher},
 		-key         => $self->process_key(%params),
-		-literal_key => 1,
 	);
 }
 
+sub cipher_object_ofb {
+	my ( $self, %params ) = _args @_;
+
+	$self->_process_params( \%params, qw/cipher/ );
+
+	require Crypt::OFB;
+	my $c = Crypt::OFB->new;
+
+	$c->padding( Crypt::ECB::PADDING_AUTO() );
+
+	$c->key( $self->process_key(%params) );
+
+	$c->cipher( $params{cipher} );
+
+	return $c;
+}
+
 sub cipher_object_cfb {
-	my ( $self, %params ) = @_;
+	my ( $self, @args ) = _args @_;
+	require Crypt::CFB;
+	$self->_cipher_object_baurem( "Crypt::CFB", @args );
+}
+
+sub cipher_object_ctr {
+	my ( $self, @args ) = _args @_;
+	require Crypt::Ctr;
+	$self->_cipher_object_baurem( "Crypt::Ctr", @args );
+}
+
+sub _cipher_object_baurem {
+	my ( $self, $class, %params ) = @_;
 
 	my $prefix = "Crypt";
 	( $prefix, $params{cipher} ) = ( Digest => delete $params{digest} ) if exists $params{digest};
 
 	$self->_process_params( \%params, qw/cipher/ );
 
-	Crypt::CFB->new( $self->process_key(%params), join("::", $prefix, $params{cipher}) );
+	$class->new( $self->process_key(%params), join("::", $prefix, $params{cipher}) );
 }
+
+use tt;
+[% FOR mode IN ["stream", "block"] %]
+sub cipher_object_[% mode %] {
+	my ( $self, @args ) = _args @_;
+	my $mode = $self->_process_param("[% mode %]_mode");
+	$self->cipher_object( @args, mode => $mode );
+}
+[% END %]
+no tt;
 
 sub process_key {
 	my ( $self, %params ) = _args @_, "key";

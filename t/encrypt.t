@@ -32,3 +32,25 @@ is( $c->process_key("foo", literal_key => 1), "foo", "literal key");
 $c->default_use_literal_key(1);
 
 is( $c->process_key("foo"), "foo", "literal key from defaults" );
+
+$c->default_use_literal_key(0);
+
+SKIP: foreach my $mode ( qw/stream block CBC CFB OFB Ctr/ ) {
+	skip "Crypt::$mode not installed ($@)", 1 unless eval { $c->cipher_object( mode => $mode, key => "futz" ) };
+
+	my $ciphertext = $c->encrypt_string(
+		key    => "moose",
+		string => "dancing",
+		mode   => $mode,
+	);
+
+	is(
+		$c->decrypt_string(
+			key    => "moose",
+			string => $ciphertext,
+			mode   => $mode,
+		),
+		"dancing",
+		"round trip using $mode",
+	);
+}
