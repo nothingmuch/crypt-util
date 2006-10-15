@@ -35,6 +35,7 @@ use Sub::Exporter;
 
 BEGIN {
 	our @DEFAULT_ACCESSORS = qw/
+		encode
 		encoding
 		digest
 		cipher
@@ -262,7 +263,7 @@ sub _maybe_[% f %]code {
 
 	my $should_encode = exists $params->{[% f %]code}
 		? $params->{[% f %]code}
-		: exists $params->{encoding};
+		: exists $params->{encoding} || $self->default_encode;
 
 	if ( $should_encode ) {
 		return $self->[% f %]code_string(
