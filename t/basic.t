@@ -21,7 +21,7 @@ is( $c->default_cipher, undef, "no default cipher" );
 my $fallback_cipher = eval { $c->fallback_cipher };
 
 SKIP: {
-	skip "Couldn't load any cipher", 4 if $@ =~ /^Couldn't load any cipher/;
+	skip "Couldn't load any cipher", 8 if $@ =~ /^Couldn't load any cipher/;
 
 	ok( !$@, "no unexpected error" );
 	ok( defined($fallback_cipher), "fallback defined" );
@@ -30,8 +30,26 @@ SKIP: {
 
 	can_ok( $cipher, qw/encrypt decrypt/ );
 	is( $cipher->decrypt( $cipher->encrypt("foo") ), "foo", "round trip encryption" );
-}
 
+	$c->default_key("moose");
+
+	my ( $binary, $encoded ) = map { $c->encrypt_string(
+		string => "The quick brown fox had a crush on the lazy moose. One day she wrote the moose a love letter but since he was lazy he never replied. The end.",
+		encode => $_,
+	) } 0, 1;
+
+	like(
+		$encoded,
+		qr{^[\w\+\*\-/=]+$},
+		"no funny chars",
+	);
+
+	cmp_ok( $binary, "ne", $encoded, "encoded != binary" );
+
+	cmp_ok( length($binary), "<", length($encoded), "encoded is longer" );
+
+	is( $c->decrypt_string( string => $encoded, decode => 1 ), $c->decrypt_string( string => $binary ), "decoded == binary" );
+}
 
 is( $c->default_digest, undef, "no default digest" );
 

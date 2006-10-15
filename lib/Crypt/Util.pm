@@ -29,7 +29,10 @@ __PACKAGE__->mk_accessors("disable_fallback");
 our %FALLBACK_LISTS = (
 	cipher => [qw/Rijndael Twofish Blowfish IDEA RC6 RC5/],
 	digest => [qw/SHA1 SHA256 RIPEMD160 Whirlpool MD5/],
-	alpha_alphanumerical_encoding => [qw/base32 hex/],
+	encoding                => [qw/hex/],
+	printable_encoding      => [qw/base64 hex/],
+	alphanumerical_encoding => [qw/base32 hex/],
+	uri_encoding            => [qw/uri_base64 base32 hex/],
 );
 
 foreach my $fallback ( keys %FALLBACK_LISTS ) {
@@ -37,20 +40,31 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 
 	my $list_method = "fallback_${fallback}_list";
 
-	constant->import( $list_method => @list );
+	my $list_method_sub = sub { # derefed list accessors
+		my ( $self, @args ) = @_;
+		if ( @args ) {
+			@args = @{ $args[0] } if @args == 1 and (ref($args[0])||'') eq "ARRAY";
+			$self->{$list_method} = \@args;
+		}
+		@{ $self->{$list_method} || \@list };
+	};
+
+	( my $type ) = ( $fallback =~ /(cipher|digest|encoding)/ );
+	my $try = "_try_${type}_fallback";
 
 	my $fallback_sub = sub {
 		my $self = shift;
 
 		$self->_find_fallback(
 			$fallback,
-			"_try_${fallback}_fallback",
+			$try,
 			$self->$list_method,
 		) || croak "Couldn't load any $fallback";
 	};
 
 	no strict 'refs';
 	*{ "fallback_$fallback" } = $fallback_sub;
+	*{ $list_method } = $list_method_sub;
 }
 
 {
@@ -93,6 +107,30 @@ sub _try_digest_fallback {
 	( my $file = $name ) =~ s{::}{/}g;
 	die $@ if $@ !~ m{^Can't locate Digest/${file}.pm in \@INC};
 	return;
+}
+
+{
+	my %encoding_module = (
+		base64     => "MIME::Base64",
+		uri_base64 => "MIME::Base64",
+		base32     => "Convert::Base32",
+		uri_escape => "URI::Escape",
+	);
+
+	sub _try_encoding_fallback {
+		my ( $self, $encoding ) = @_;	
+
+		return 1 if $encoding eq "hex";
+		
+		my $module = $encoding_module{$encoding};
+		$module =~ s{::}{/}g;
+		$module .= ".pm";
+
+		local $@;
+		eval { require $module };
+
+		return !$@;
+	}
 }
 
 sub _process_params {
@@ -157,22 +195,22 @@ sub [% f %]crypt_string {
 	my $c = $self->cipher_object( %params );
 
 	[% IF f == "en" %]
-	$self->_maybe_encode( $c->[% f %]crypt($string), \%params );
+	$self->_maybe_encode( $c->encrypt($string), \%params );
 	[% ELSE %]
-	$c->[% f %]crypt( $self->_maybe_decode($string), \%params );
+	$c->decrypt( $self->_maybe_decode($string, \%params ) );
 	[% END %]
 }
 
 sub _maybe_[% f %]code {
 	my ( $self, $string, $params ) = @_;
 
-	if ( my $encoding = delete $params->{encoding} ) {
-		$encoding = $self->_process_param("encoding")
-			unless $encoding =~ /^[a-z]\w+$/i;
+	my $should_encode = exists $params->{[% f %]code}
+		? $params->{[% f %]code}
+		: exists $params->{encoding};
 
-		return $self->[% f %]code(
+	if ( $should_encode ) {
+		return $self->[% f %]code_string(
 			%$params,
-			encoding => $encoding,
 			string   => $string,
 		);
 	} else {
@@ -243,8 +281,8 @@ sub tamper_protected {
 
 	my $hash = $self->digest_string(
 		%params,
-		encoding => 0,
-		string   => $packed,
+		encode => 0,
+		string => $packed,
 	);
 
 	return $self->encrypt_string(
@@ -280,11 +318,11 @@ sub thaw_tamper_protected {
 	my %flags = $self->_flag_int_to_hash($flags);
 
 	return unless $self->verify_hash(
-		fatal    => 1,
+		fatal  => 1,
 		%params, # allow user to override fatal
-		hash     => $hash,
-		encoding => 0,
-		string   => $packed,
+		hash   => $hash,
+		decode => 0,
+		string => $packed,
 	);
 
 	my $data = unpack("x[n n] N/a*", $packed);
@@ -321,6 +359,107 @@ sub _flag_int_to_hash {
 	return wantarray ? %flags : \%flags;
 }
 
+use tt
+[% FOR f IN ["en","de"] %]
+sub [% f %]code_string {
+	my ( $self, %params ) = @_;
+
+	my $string = delete $params{string};
+	croak "You must provide the 'string' parameter" unless defined $string;
+
+	$self->_process_params( \%params, qw/
+		encoding
+	/);
+
+	my $encoding = delete $params{encoding};
+	croak "Encoding method must be an encoding name" unless $encoding;
+	my $method = "[% f %]code_string_$encoding";
+	croak "Encoding method $encoding is not supported" unless $self->can($method);
+
+	$self->$method($string);
+}
+[% END %]
+no tt;
+
+sub encode_string_hex {
+	my ( $self, $string ) = @_;
+	unpack("H*", $string);
+}
+
+sub decode_string_hex {
+	my ( $self, $hex ) = @_;
+	pack("H*", $hex );
+}
+
+sub encode_string_base64 {
+	my ( $self, $string ) = @_;
+	require MIME::Base64;
+	MIME::Base64::encode_base64($string, "");
+}
+
+sub encode_string_base64_wrapped {
+	my ( $self, $string ) = @_;
+	require MIME::Base64;
+	MIME::Base64::encode_base64($string);
+}
+
+sub decode_string_base64 {
+	my ( $self, $base64 ) = @_;
+	require MIME::Base64;
+	MIME::Base64::decode_base64($base64);
+}
+
+# http://www.dev411.com/blog/2006/10/02/encoding-hashed-uids-base64-vs-hex-vs-base32
+sub encode_string_uri_base64 {
+	my ( $self, $string ) = @_;
+	my $encoded = $self->encode_string_base64($string);
+	$encoded =~ tr{+/}{*-};
+	$encoded =~ s/=+$//;
+	return $encoded;
+}
+
+sub decode_string_uri_base64 {
+	my ( $self, $base64 ) = @_;
+	$base64 =~ tr{*-}{+/};
+	$self->decode_string_base64($base64);
+}
+
+sub encode_string_base32 {
+	my ( $self, $string ) = @_;
+	require Convert::Base32;
+	Convert::Base32::encode_base32($string);
+}
+
+sub decode_string_base32 {
+	my ( $self, $base32 ) = @_;
+	require Convert::Base32;
+	Convert::Base32::decode_base32($base32);
+}
+
+sub encode_string_uri_escape {
+	my ( $self, $string ) = @_;
+	require URI::Escape;
+	URI::Escape::uri_escape($string);
+}
+
+sub decode_string_uri_escape {
+	my ( $self, $uri_escaped ) = @_;
+	require URI::Escape;
+	URI::Escape::uri_unescape($uri_escaped);
+}
+
+use tt;
+[% FOR symbolic_encoding IN ["uri", "alphanumerical", "printable"] %]
+[% FOR f IN ["en", "de"] %]
+sub [% f %]code_string_[% symbolic_encoding %] {
+	my ( $self, $string ) = @_;
+	my $encoding = $self->_process_param("[% symbolic_encoding %]_encoding");
+	$self->[% f %]code_string( string => $string, encoding => $encoding );
+}
+[% END %]
+[% END %]
+no tt;
+
 __PACKAGE__;
 
 __END__
@@ -341,9 +480,9 @@ Crypto::Util - A lightweight Crypt/Digest convenience API
 
 	# MAC or cipher+digest based tamper resistent encapsulation
 
-	my $tamper_resistent_string = $util->encode_tamper_resistent( $data ); # can also take refs
+	my $tamper_resistent_string = $util->tamper_protected( $data ); # can also take refs
 
-	my $trusted = $util->decode_tamper_resistent( $untrusted_string, key => "another secret" );
+	my $trusted = $util->thaw_tamper_protected( $untrusted_string, key => "another secret" );
 
 	# without specifying which encoding returns base32 or hex if base32 is unavailable
 	my $encoded = $util->encode_string( $bytes );
@@ -510,6 +649,8 @@ qw/SHA1 RIPEMD-160 Whirlpool MD5/
 
 =item fallback_encoding
 
+=item fallback_encoding_list
+
 "hex"
 
 =item default_alphanumerical_encoding
@@ -522,9 +663,11 @@ qw/SHA1 RIPEMD-160 Whirlpool MD5/
 
 =item default_uri_encoding
 
-=item fallback_printable_encoding
+=item fallback_uri_encoding
 
-"alphanumerical" # XXX make this uri_escape?
+=item fallback_uri_encoding_list
+
+"uri_base64" # XXX make this uri_escape?
 
 =item default_printable_encoding
 
