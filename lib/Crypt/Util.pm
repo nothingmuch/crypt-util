@@ -8,7 +8,6 @@ use warnings;
 use base qw/Class::Accessor::Fast/;
 
 use Digest;
-use Crypt::CBC;
 use Storable;
 
 $Digest::MMAP{"RIPEMD160"} ||= $Digest::MMAP{"RIPEMD-160"} ||="Crypt::RIPEMD160";
@@ -35,6 +34,7 @@ use Sub::Exporter;
 
 BEGIN {
 	our @DEFAULT_ACCESSORS = qw/
+		mode
 		encode
 		encoding
 		digest
@@ -42,6 +42,7 @@ BEGIN {
 		key
 		default_uri_encoding
 		default_printable_encoding
+		use_literal_key
 	/;
 
 	__PACKAGE__->mk_accessors( map { "default_$_" } @DEFAULT_ACCESSORS );
@@ -84,6 +85,7 @@ BEGIN {
 }
 
 our %FALLBACK_LISTS = (
+	mode   => [qw/CFB CBC/],
 	cipher => [qw/Rijndael Twofish Blowfish IDEA RC6 RC5/],
 	digest => [qw/SHA1 SHA256 RIPEMD160 Whirlpool MD5/],
 	encoding                => [qw/hex/],
@@ -106,7 +108,7 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 		@{ $self->{$list_method} || \@list };
 	};
 
-	( my $type ) = ( $fallback =~ /(cipher|digest|encoding)/ );
+	my $type = ( $fallback =~ /(encoding)/ )[0] || $fallback;
 	my $try = "_try_${type}_fallback";
 
 	my $fallback_sub = sub {
@@ -147,10 +149,10 @@ sub _try_cipher_fallback {
 	my ( $self, $name ) = @_;
 
 	local $@;
-	eval { $self->cipher_object( cipher => $name, key => "" ) };
+	eval { $self->cipher_object( cipher => $name, key => "x" x 32, literal_key => 1 ) };
 	
 	return 1 if !$@;
-	die $@ if $@ !~ /^Couldn't load Crypt::$name/;
+	die $@ if $@ !~ /^(?:Can|Could)(?: not|n't) (?:instantiate|load|locate) Crypt(?:::$name)?/i;
 	return;
 }
 
@@ -163,6 +165,20 @@ sub _try_digest_fallback {
 	return 1 if !$@;
 	( my $file = $name ) =~ s{::}{/}g;
 	die $@ if $@ !~ m{^Can't locate Digest/${file}.pm in \@INC};
+	return;
+}
+
+sub _try_mode_fallback {
+	my ( $self, $mode ) = @_;
+
+	(my $file = $mode) =~ s{::}{/}g;
+	$file = "Crypt/$file.pm";
+
+	local $@;
+	eval { require $file }; # yes it's portable
+
+	return 1 if !$@;
+	die $@ if $@ !~ /^Can't locate $file in \@INC/;
 	return;
 }
 
@@ -238,15 +254,62 @@ sub _process_param {
 sub cipher_object {
 	my ( $self, %params ) = _args @_;
 	
-	$self->_process_params( \%params, qw/
-		cipher
-		key
-	/);
+	$self->_process_params( \%params, qw/mode/);
+
+	my $method = "cipher_object_" . lc(delete $params{mode});
+
+	$self->$method( %params );
+}
+
+sub cipher_object_cbc {
+	my ( $self, %params ) = @_;
+
+	$self->_process_params( \%params, qw/cipher/ );
 
 	Crypt::CBC->new(
-		-cipher => $params{cipher},
-		-key    => $params{key},
+		-cipher      => $params{cipher},
+		-key         => $self->process_key(%params),
+		-literal_key => 1,
 	);
+}
+
+sub cipher_object_cfb {
+	my ( $self, %params ) = @_;
+
+	my $prefix = "Crypt";
+	( $prefix, $params{cipher} ) = ( Digest => delete $params{digest} ) if exists $params{digest};
+
+	$self->_process_params( \%params, qw/cipher/ );
+
+	Crypt::CFB->new( $self->process_key(%params), join("::", $prefix, $params{cipher}) );
+}
+
+sub process_key {
+	my ( $self, %params ) = _args @_, "key";
+
+	if ( $params{literal_key} || $self->default_use_literal_key ) {
+		$self->_process_params( \%params, qw/key/ );
+		return $params{key};
+	} else {
+		$self->_process_params( \%params, qw/key cipher/ );
+		my $cipher = $params{cipher};
+
+		my $class = "Crypt::$cipher";
+		my $size_method = $class->can("keysize") || $class->can("blocksize");
+		my $size = $class->$size_method;
+
+		$size ||= $cipher eq "Blowfish" ? 56 : 32;
+
+		return $self->digest_string(
+			string => $params{key},
+			digest => "MultiHash",
+			encode => 0,
+			digest_args => [{
+				width  => $size,
+				hashes => [ $self->fallback_digest_list ],
+			}],
+		);
+	}
 }
 
 sub digest_object {
@@ -256,7 +319,7 @@ sub digest_object {
 		digest
 	/);
 
-	Digest->new( $params{digest} );
+	Digest->new( $params{digest}, @{ $params{digest_args} || [] } );
 }
 
 use tt;

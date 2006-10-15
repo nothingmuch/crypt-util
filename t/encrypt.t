@@ -21,5 +21,14 @@ BEGIN {
 }
 
 
-pass("blah");
+my $key = $c->process_key("foo");
 
+ok( length($key), "key has some length" );
+
+cmp_ok( $key, "ne", "foo", "it's a digest of some sort" );
+
+is( $c->process_key("foo", literal_key => 1), "foo", "literal key");
+
+$c->default_use_literal_key(1);
+
+is( $c->process_key("foo"), "foo", "literal key from defaults" );

@@ -29,7 +29,9 @@ SKIP: {
 	my $cipher = $c->cipher_object( key => "foo" );
 
 	can_ok( $cipher, qw/encrypt decrypt/ );
-	is( $cipher->decrypt( $cipher->encrypt("foo") ), "foo", "round trip encryption" );
+	my $ciphertext = $cipher->encrypt("foo");
+	$cipher->reset if $cipher->can("reset");
+	is( $cipher->decrypt($ciphertext), "foo", "round trip encryption" );
 
 	$c->default_key("moose");
 
