@@ -9,6 +9,7 @@ use base qw/Class::Accessor::Fast/;
 
 use Digest;
 use Crypt::CBC;
+use Storable;
 
 use Carp qw/croak/;
 
@@ -22,6 +23,8 @@ our @DEFAULT_ACCESSORS = qw/
 /;
 
 __PACKAGE__->mk_accessors( map { "default_$_" } @DEFAULT_ACCESSORS );
+
+__PACKAGE__->mk_accessors("disable_fallback");
 
 our %FALLBACK_LISTS = (
 	cipher => [qw/Rijndael Twofish Blowfish IDEA RC6 RC5/],
@@ -57,7 +60,9 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 		my ( $self, $key, $test, @list ) = @_;
 
 		my $cache = $fallback_caches{$key} ||= {};
-		
+	
+		@list = $list[0] if @list and $self->disable_fallback;
+
 		foreach my $elem ( @list ) {
 			$cache->{$elem} = $self->$test( $elem ) unless exists $cache->{$elem};
 			return $elem if $cache->{$elem};
@@ -105,7 +110,7 @@ sub _process_param {
 
 	my $default = "default_$param";
 
-	if ( defined( my $value = $self->$default ) ) {
+	if ( $self->can($default) and defined( my $value = $self->$default ) ) {
 		return $value;
 	}
 
@@ -209,6 +214,111 @@ sub verify_hash {
 sub verify_digest {
 	my ( $self, @args ) = @_;
 	$self->verify_hash(@args);
+}
+
+my @flags = qw/storable/;
+our $TAMPER_PROTECT_VERSION = 1;
+
+sub tamper_protected {
+	my ( $self, %params ) = @_;
+
+	$self->_process_params( \%params, qw/
+		data
+	/);
+
+	my $data = delete $params{data};
+
+	my %flags;
+
+	if ( ref $data ) {
+		$flags{storable} = 1;
+		$data = Storable::nfreeze($data);
+	}
+
+	my $flags = $self->_flag_hash_to_int(%flags);
+
+	my $packed = pack("n n N/a*", $TAMPER_PROTECT_VERSION, $flags, $data );
+
+	# FIXME HMAC etc here
+
+	my $hash = $self->digest_string(
+		%params,
+		encoding => 0,
+		string   => $packed,
+	);
+
+	return $self->encrypt_string(
+		%params,
+		string => pack("n/a* a*", $hash, $packed),
+	);
+}
+
+sub _flag_hash_to_int {
+	my ( $self, %flags ) = @_;
+
+	my $bit = 1;
+	my $flags = 0;
+
+	foreach my $flag (@flags) {
+		$flags |= $bit if $flags{$flag};
+	} continue {
+		$bit *= 2;	
+	}
+
+	return $flags;
+}
+
+sub thaw_tamper_protected {
+	my ( $self, %params ) = @_;
+
+	my $hashed_packed = $self->decrypt_string( %params );
+
+	my ( $hash, $version, $flags, $packed ) = unpack("n/a n n X[n n] a*", $hashed_packed);
+
+	$self->_tamper_protect_version_check( $version );
+
+	my %flags = $self->_flag_int_to_hash($flags);
+
+	return unless $self->verify_hash(
+		fatal    => 1,
+		%params, # allow user to override fatal
+		hash     => $hash,
+		encoding => 0,
+		string   => $packed,
+	);
+
+	my $data = unpack("x[n n] N/a*", $packed);
+
+	return $flags{storable}
+		? Storable::thaw($data)
+		: $data;
+}
+
+sub tamper_unprotected {
+	my ( $self, @args ) = @_;
+	$self->thaw_tamper_protected(@args);
+}
+
+sub _tamper_protect_version_check {
+	my ( $self, $version ) = @_;
+
+	croak "Incompatible tamper protected string (I'm version $TAMPER_PROTECT_VERSION, thawing version $version)"
+		unless $version == $TAMPER_PROTECT_VERSION;
+}
+
+sub _flag_int_to_hash {
+	my ( $self, $flags ) = @_;
+
+	my $bit =1;
+	my %flags;
+
+	foreach my $flag (@flags ) {
+		$flags{$flag} = $flags & $bit;
+	} continue {
+		$bit *= 2;
+	}
+
+	return wantarray ? %flags : \%flags;
 }
 
 __PACKAGE__;
@@ -369,9 +479,9 @@ encoding into a URI safe string
 # "default" is there to be overridden by configs, if it returns nothing fallback will be called
 # "fallback" is for when nothing is configured -- the class's default
 
-=item allow_fallback
+=item disable
 
-When false only the first item from the fallback list will be tried, and if it
+When true only the first item from the fallback list will be tried, and if it
 can't be loaded there will be loud deaths.
 
 Enable this to ensure portability
