@@ -149,7 +149,8 @@ sub _try_cipher_fallback {
 	my ( $self, $name ) = @_;
 
 	local $@;
-	eval { $self->cipher_object( cipher => $name, key => "x" x 32, literal_key => 1 ) };
+	( my $file = "Crypt::${name}.pm" ) =~ s{::}{/}g;
+	eval { require $file };
 	
 	return 1 if !$@;
 	die $@ if $@ !~ /^(?:Can|Could)(?: not|n't) (?:instantiate|load|locate) Crypt(?:::$name)?/i;
