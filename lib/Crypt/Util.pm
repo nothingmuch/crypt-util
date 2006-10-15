@@ -87,7 +87,7 @@ BEGIN {
 our %FALLBACK_LISTS = (
 	mode   => [qw/CFB CBC/],
 	cipher => [qw/Rijndael Twofish Blowfish IDEA RC6 RC5/],
-	digest => [qw/SHA1 SHA256 RIPEMD160 Whirlpool MD5/],
+	digest => [qw/SHA1 SHA256 RIPEMD160 Whirlpool MD5 Haval256/],
 	encoding                => [qw/hex/],
 	printable_encoding      => [qw/base64 hex/],
 	alphanumerical_encoding => [qw/base32 hex/],
