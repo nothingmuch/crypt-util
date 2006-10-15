@@ -703,7 +703,11 @@ xMAC support
 
 =item *
 
-Bruce Schneier Fact Database
+Crypt::SaltedHash support
+
+=item *
+
+Bruce Schneier Fact Database L<http://geekz.co.uk/lovesraymond/archive/bruce-schneier-facts>
 
 =item *
 
