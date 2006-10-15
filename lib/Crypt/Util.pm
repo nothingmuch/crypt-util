@@ -152,9 +152,10 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 sub _try_cipher_fallback {
 	my ( $self, $name ) = @_;
 
-	local $@;
 	( my $file = "Crypt::${name}.pm" ) =~ s{::}{/}g;
-	eval { require $file };
+
+	local $@;
+	eval { require $file }; # yes it's portable
 	
 	return 1 if !$@;
 	die $@ if $@ !~ /^(?:Can|Could)(?: not|n't) (?:instantiate|load|locate) Crypt(?:::$name)?/i;
