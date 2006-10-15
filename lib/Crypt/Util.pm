@@ -604,6 +604,7 @@ sub encode_string_uri_base64 {
 sub decode_string_uri_base64 {
 	my ( $self, $base64 ) = @_;
 	$base64 =~ tr{*-}{+/};
+	$base64 .= "=" x abs( - length($base64) % 4 );
 	$self->decode_string_base64($base64);
 }
 
