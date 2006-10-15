@@ -680,7 +680,63 @@ Crypto::Util - A lightweight Crypt/Digest convenience API
 		digest => "md5",
 	);
 
+=head1 ACHTUNG!
+
+This is a sloppy release. By 0.01 the docs should be in place, as well as some
+more features I want in. As the saying goes, release prematurely, cry often.
+
 =head1 DESCRIPTION
+
+This module provides an easy, intuitive and forgiving API for weilding
+crypto-fu.
+
+Features which are currently missing but are scheduled for 0.01:
+
+=over 4
+
+=item *
+
+xMAC support
+
+=item *
+
+Bruce Schneier Fact Database
+
+=item *
+
+Entropy fetching (get N weak/strong bytes, etc) from e.g. OpenSSL bindings,
+/dev/*random, and EGD.
+
+=item *
+
+Pipelined encrypting/digesting... Currently all the methods are named
+foo_string. In the future, a foo variant that auto DWIMs will be added, and a
+foo_stream, foo_handle, foo_callbacks api will be layered over a simple push
+API (like Crypt::CBC).
+
+=back
+
+=head1 PRIORITIES
+
+=over 4
+
+=item Ease of use
+
+Usability patches are very welcome - this is supposed to be an easy api for
+random people to be able to easily (but responsibly) use the more low level
+Crypt:: and Digest:: modules on the CPAN.
+
+=item Pluggability
+
+Dependency hell is avoided using a fallback mechanism that tries to choose an
+algorithm based on an overridable list.
+
+For "simple" use install Crypt::Util and your favourite digest, cipher and
+cipher mode (CBC, CFB, etc).
+
+To ensure predictable behavior the fallback behavior can be disabled as necessary.
+
+=back
 
 =head1 METHODS
 
