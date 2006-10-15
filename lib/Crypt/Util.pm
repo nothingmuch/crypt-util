@@ -15,18 +15,72 @@ $Digest::MMAP{"RIPEMD160"} ||= $Digest::MMAP{"RIPEMD-160"} ||="Crypt::RIPEMD160"
 
 use Carp qw/croak/;
 
-our @DEFAULT_ACCESSORS = qw/
-	encoding
-	digest
-	cipher
-	key
-	default_uri_encoding
-	default_printable_encoding
-/;
+sub __curry_instance {
+	my ($class, $method_name, undef, $col) = @_;
 
-__PACKAGE__->mk_accessors( map { "default_$_" } @DEFAULT_ACCESSORS );
+	my $self = $col->{instance} ||= $class->__curry_flavoured_instance($col);
 
-__PACKAGE__->mk_accessors("disable_fallback");
+	sub { $self->$method_name(@_) };
+}
+
+sub __curry_flavoured_instance {
+	my ( $class, $col ) = @_;
+
+	my %params; @params{ map { "default_$_" } keys %{ $col->{defaults} } } = values %{ $col->{defaults} };
+
+	$class->new( \%params );
+}
+
+use Sub::Exporter;
+
+BEGIN {
+	our @DEFAULT_ACCESSORS = qw/
+		encoding
+		digest
+		cipher
+		key
+		default_uri_encoding
+		default_printable_encoding
+	/;
+
+	__PACKAGE__->mk_accessors( map { "default_$_" } @DEFAULT_ACCESSORS );
+
+	__PACKAGE__->mk_accessors("disable_fallback");
+
+	my %export_groups = (
+		'crypt' => [qw/
+			encrypt_string decrypt_string
+			tamper_protected thaw_tamper_protected tamper_unprotected
+			cipher_object
+		/],
+		digest => [qw/
+			digest_string verify_hash verify_digest
+			digest_object
+		/],
+		encoding => [qw/
+			encode_string decode_string
+			encode_string_hex decode_string_hex
+			encode_string_base64 decode_string_base64 encode_string_base64_wrapped
+			encode_string_base32 decode_string_base32
+			encode_string_uri_base64 decode_string_uri_base64
+			encode_string_uri decode_string_uri
+			encode_string_alphanumerical decode_string_alphanumerical
+			encode_string_printable decode_string_printable
+			encode_string_uri_escape decode_string_uri_escape
+		/],
+		params => [ "exported_instance", "disable_fallback", map { "default_$_" } @DEFAULT_ACCESSORS ],
+	);
+
+	my %exports = map { $_ => \&__curry_instance } map { @$_ } values %export_groups;
+
+	Sub::Exporter->import( -setup => {
+		exports    => \%exports,
+		groups     => \%export_groups,
+		collectors => {
+			defaults => sub { 1 },
+		},
+	});
+}
 
 our %FALLBACK_LISTS = (
 	cipher => [qw/Rijndael Twofish Blowfish IDEA RC6 RC5/],
@@ -461,6 +515,11 @@ sub [% f %]code_string_[% symbolic_encoding %] {
 [% END %]
 [% END %]
 no tt;
+
+sub exported_instance {
+	my $self = shift;
+	return $self;
+}
 
 __PACKAGE__;
 
