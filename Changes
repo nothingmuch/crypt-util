@@ -1,0 +1,11 @@
+0.01_02
+		- Make Digest::MultiHash more predictable, so that varying installs
+		  will generate the same hashes.
+		- Use SHA-512 to hash passphrases into variable width keys
+		- Refactor Digest::MoreFallbacks out of Crypt::Util
+		- Introduce a SHA* dependency (Digest::SHA, Digest::SHA2, or
+		  Digest::SHA::PurePerl will satisfy it)
+		- Doc improvements
+
+0.01_01
+		- Initial release
