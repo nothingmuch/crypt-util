@@ -22,8 +22,14 @@ recommends 'Crypt::Rijndael' => 0;
 recommends 'Crypt::Twofish'  => 0;
 recommends 'Crypt::Blowfish' => 0;
 
-recommends 'Digest::SHA1'      => 0;
-recommends 'Digest::SHA2'      => 0;
+unless ( eval { require Digest::SHA } or eval { require Digest::SHA2 } ) {
+	unless ( eval { require Digest::SHA::PurePerl } ) {
+		requires "Digest::SHA::PurePerl" => 0
+	}
+	recommends 'Digest::SHA'         => 0;
+}
+
+recommends 'Crypt::RIPEMD160'  => 0;
 recommends 'Digest::Whirlpool' => 0;
 recommends 'Digest::MD5'       => 0;
 
