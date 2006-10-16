@@ -667,71 +667,38 @@ Crypt::Util - A lightweight Crypt/Digest convenience API
 	$util->default_key("my secret");
 
 	# MAC or cipher+digest based tamper resistent encapsulation
+	# (uses Storable on $data if necessary)
+	my $tamper_resistent_string = $util->tamper_protected( $data );
 
-	my $tamper_resistent_string = $util->tamper_protected( $data ); # can also take refs
+	my $verified = $util->thaw_tamper_protected( $untrusted_string, key => "another secret" );
 
-	my $trusted = $util->thaw_tamper_protected( $untrusted_string, key => "another secret" );
-
-	# without specifying which encoding returns base32 or hex if base32 is unavailable
+	# If the encoding is unspecified, base32 is used
+	# (hex if base32 is unavailable)
 	my $encoded = $util->encode_string( $bytes );
 
 	my $hash = $util->digest( $bytes, digest => "md5" );
 
 	die "baaaad" unless $util->verify_hash(
-		hash => $hash,
-		data => $bytes,
+		hash   => $hash,
+		data   => $bytes,
 		digest => "md5",
 	);
 
-=head1 ACHTUNG!
-
-This is a sloppy release. By 0.01 the docs should be in place, as well as some
-more features I want in. As the saying goes, release prematurely, cry often.
 
 =head1 DESCRIPTION
 
-This module provides an easy, intuitive and forgiving API for weilding
+This module provides an easy, intuitive and forgiving API for wielding
 crypto-fu.
 
-Features which are currently missing but are scheduled for 0.01:
-
-=over 4
-
-=item *
-
-xMAC support
-
-=item *
-
-Crypt::SaltedHash support
-
-=item *
-
-Bruce Schneier Fact Database L<http://geekz.co.uk/lovesraymond/archive/bruce-schneier-facts>
-
-=item *
-
-Entropy fetching (get N weak/strong bytes, etc) from e.g. OpenSSL bindings,
-/dev/*random, and EGD.
-
-=item *
-
-Pipelined encrypting/digesting... Currently all the methods are named
-foo_string. In the future, a foo variant that auto DWIMs will be added, and a
-foo_stream, foo_handle, foo_callbacks api will be layered over a simple push
-API (like Crypt::CBC).
-
-=back
-
-=head1 PRIORITIES
+=head2 Priorities
 
 =over 4
 
 =item Ease of use
 
-Usability patches are very welcome - this is supposed to be an easy api for
-random people to be able to easily (but responsibly) use the more low level
-Crypt:: and Digest:: modules on the CPAN.
+This module is designed to have an easy API to allow easy but responsible
+use of the more low level Crypt:: and Digest:: modules on CPAN.  Therefore,
+patches to improve ease-of-use are very welcome.
 
 =item Pluggability
 
@@ -745,7 +712,7 @@ To ensure predictable behavior the fallback behavior can be disabled as necessar
 
 =back
 
-=head1 INTEROPERABILITY
+=head2 Interoperability
 
 To ensure that your hashes and strings are compatible with L<Crypt::Util>
 deployments on other machines (where different Crypt/Digest modules are
@@ -754,184 +721,381 @@ available, etc) you should use C<disable_fallback>.
 Then either set the default ciphers, or always explicitly state the cipher.
 
 If you are only encrypting and decrypting with the same installation, and new
-cryptographic modules are not being installed the hashes/ciphertexts should be
+cryptographic modules are not being installed, the hashes/ciphertexts should be
 compatible without disabling fallback.
 
 =head1 METHODS
 
+
+# FIXME
+# missing:
+# process_key, default_mode, fallback_mode, fallback_mode_list
 =over 4
 
-=item tamper_protected [ $data ] %params
+=item tamper_protected( [ $data ], %params )
 
-=item thaw_tamper_protected [ $string ] %params
+# DESCRIBE
 
-=item tamper_unprotected [ $string ] %params
+=item thaw_tamper_protected( [ $string ], %params )
 
-params: data => $anything, encrypt => bool || alg (defaults to true, false means just hmac), key (encrypt_string), digest => bool || alg, encode => bool || alg (defaults to true/"uri", see encode string), fatal => bool (defaults to true, turning it off will return undef on failure instead of dying)
+# DESCRIBE
 
-with odd args the first is treated as data
+=item tamper_unprotected( [ $string ], %params )
 
-implicitly storables data if it's a ref
+This method accepts the following parameters:
 
-=item encrypt_string [ $string ] %params
+=over 4
 
-=item decrypt_string [ $string ] %params
+=item * data
 
-encode => bool || alg (defaults to false), encrypt => bool || alg, key (defaults to server_key)
+The data to encrypt. If this is a reference L<Storable> will be used to serialize the data.
 
-with odd args the firstr is treated as the string
+=item * encrypt
 
-=item cipher_object %params
+By default this parameter is true, unless C<default_tamper_protect_encrypts()>,
+has been used to alter it.
 
-params: cipher, key
+A true value implies that all the parameters
+which are available to C<encrypt_string()> are also available.  If a
+negative value is specified, MAC mode is used, and the additional
+parameters of C<mac_string()> may also be specified to this method.,
 
-Return an object using L<Crypt::CBC>
+=back
 
-=item digest_string [ $string ] %params
 
-digest => alg
+=item encrypt_string( [ $string ], %params )
 
-with odd args the firstr is treated as the string
+All of the parameters which may be supplied to C<process_key()> are
+also available to this method.
 
-=item verify_digest
+=item decrypt_string( [ $string ], %params )
 
-hash => string (the hash to verify), string => string (the digested string), all params of digest_string, fatal => bool (defaults to false)
+The following parameters may be used:
 
-just calls digest_string and then eq
+=over 4
 
-=item digest_object %params
+=item * encode
+
+Boolean.  The default value is false.
+
+=item * encoding
+
+alg.
+
+=item * key
+
+The default value is I<server_key>.
+
+=item * mode
+
+# Describe
+
+=item * string
+
+The string to be decrypt can either be supplied first, creating an odd
+number of arguments, or as a named parameter.
+
+=back
+
+
+=item process_key( $key, %params )
+
+The following arguments may be specified:
+
+=over 4
+
+=item * literal_key
+
+This disables mungung.
+
+=item * key_size
+
+Can be used to force a key size, even if the cipher specifies another size.
+
+=item * cipher
+
+Used to determine the key size.
+
+=back
+
+
+=item cipher_object( %params )
+
+Available parameters are:
+
+=over 4
+
+=item * cipher
+
+# Description.
+
+=item * mode
+
+# Description.
+
+=back
+
+Return an object using L<Crypt::CBC>.
+
+=item digest_string( [ $string ], %params )
+
+The following arguments are available:
+
+=over 4
+
+=item * digest
+
+alg.
+
+=item * string
+
+The string to be digested can either be supplied first, creating an odd
+number of arguments, or as a named parameter.
+
+=back
+
+
+=item verify_digest( %params )
+
+The following parameters are accepted:
+
+=over 4
+
+=item * hash
+
+A string containing the hash to verify.
+
+=item * string
+
+The digested string.
+
+=item * fatal
+
+If true, errors will be fatal.  The default is false, which means that
+failures will return undef.
+
+=back
+
+In addition, the parameters which can be supplied to C<digest_string()>
+may also be supplied to this method.
+
+=item digest_object( %params )
 
 params: digest
 
-Returns an object using L<Digest>
+Returns an object using L<Digest>.
 
-=item encode_string [ $string ] %params
+=item encode_string( [ $string ], %params )
 
-=item decode_string [ $string ] %params
+=item decode_string( [ $string ], %params )
 
-encoding => symbolic type (uri, printable) or concrete type (none, hex, base64, base32)
+The following parameters are accepted:
 
-=item mac_digest_string [ $string ] %params
+=over 4
 
-=item verify_mac %params
+=item * encoding
+
+The encoding may be a symbolic type (uri, printable) or a concrete type
+(none, hex, base64, base32).
+
+=back
+
+=item mac_digest_string( [ $string ], %param )
+
+=item verify_mac( %params )
 
 XXX emac, hmac, etc wrapper?
 
-mac => string (the mac to verify), string => string (the digested string), type => "digest" || "cipher" # hmac or cmac, fatal => bool (defaults to false, whbich just returns undef on failure)
+The following arguments are allowed:
 
-=item hmac_digest_string %params
+=over 4
 
-=item verify_hmac %params
+=item * mac
 
-mac => string (the mac to verify), string => string (the digested string), fatal => bool (defaults to false), all params of hmac_digest_string
+The MAC string to verify.
 
-=item cmac_digest_string %params
+=item * string
 
-=item verify_cmac
+The digested string.
+
+=item * type
+
+One of 'digest' or 'cipher' (hmac or cmac).
+
+=item * fatal
+
+If true, errors will be fatal.  The default is false, which means that
+failures will return undef.
+
+=back
+
+=item hmac_digest_string( %params )
+
+=item verify_hmac( %params )
+
+The following arguments are allowed:
+
+=over 4
+
+=item * mac
+
+The MAC string to verify.
+
+=item * string
+
+The digested string.
+
+=item * fatal
+
+If true, errors will be fatal.  The default is false, which means that
+failures will return undef.
+
+=back
+
+In addition, all the parameters which can be supplied to C<hmac_digest_string()>
+are also available to this method.
+
+=item cmac_digest_string( %params )
+
+=item verify_cmac()
 
 cmac, emac
 
 with odd args the firstr is treated as the string
 
-=item weak_random_string %params
+=item weak_random_string( %params )
 
-A fairly entropic random string, suitable for digesting
+A fairly entropic random string, suitable for digesting.
 
-digest => bool || alg (defaults to true), encode bool || alg
+The result is the concatenation of several pseudorandom numbers.
 
-=item strong_random_string %params
+This is a good enough value for e.g. session IDs.
 
-digest => bool || alg (defaults to false), encode bool || alg, bytes => $n (defaults to 32)
+The following parameters are available:
+
+=over 4
+
+=item * digest
+
+Expects bool or algorithm. Unless disabled, the string will be digested with the default algorithm.
+
+=item * encode
+
+Expects bool or alg.
+
+=back
+
+
+=item strong_random_string( %params )
+
+Available arguments are:
+
+=over 4
+
+=item * digest
+
+Expects bool or alg.  The default is false.
+
+=item * encode
+
+Expects bool or alg.
+
+=item * bytes
+
+Expects a number; the default is 32.
+
+=back
+
 
 might not be supported (tries /dev/random  and/or the OpenSSL bindings)
 
-=item encode_string_alphanumerical $string
+=item encode_string_alphanumerical( $string )
 
-=item decode_string_alphanumerical $string
+=item decode_string_alphanumerical( $string )
 
-=item encode_string_uri $string
+=item encode_string_uri( $string )
 
-=item decode_string_uri $string
+=item decode_string_uri( $string )
 
 encoding into a URI safe string
 
-=item encode_string_printable $string
+=item encode_string_printable( $string )
 
-=item decode_string_printable $string
+=item decode_string_printable( $string )
 
-=item encode_string_hex $string
+=item encode_string_hex( $string )
 
-=item decode_string_hex $string
+=item decode_string_hex( $string )
 
-=item encode_string_uri_escape $string
+=item encode_string_uri_escape( $string )
 
-=item decode_string_uri_escape $string
+=item decode_string_uri_escape( $string )
 
-=item encode_string_base64 $string
+=item encode_string_base64( $string )
 
-=item decode_string_base64 $string
+=item decode_string_base64( $string )
 
-=item encode_string_base32 $string
+=item encode_string_base32( $string )
 
-=item decode_string_base32 $string
+=item decode_string_base32( $string )
 
 # "default" is there to be overridden by configs, if it returns nothing fallback will be called
 # "fallback" is for when nothing is configured -- the class's default
 
-=item disable
+=item disable_fallback()
 
 When true only the first item from the fallback list will be tried, and if it
-can't be loaded there will be loud deaths.
+can't be loaded there will be a fatal error.
 
-Enable this to ensure portability
+Enable this to ensure portability.
 
-=item default_key
+=item default_key()
 
-=item default_cipher
+=item default_cipher()
 
-=item fallback_cipher
+=item fallback_cipher()
 
 find the first from fallback_cipher_list
 
-=item fallback_cipher_list
+=item fallback_cipher_list()
 
 qw/Rijndael Serpent Twofish Blowfish RC6 RC5/
 
-=item default_digest
+=item default_digest()
 
-=item fallback_digest
+=item fallback_digest()
 
-=item fallback_digest_list
+=item fallback_digest_list()
 
 qw/SHA-1 SHA-256 RIPEMD160 Whirlpool MD5 Haval256/
 
-=item default_encoding
+=item default_encoding()
 
-=item fallback_encoding
+=item fallback_encoding()
 
-=item fallback_encoding_list
+=item fallback_encoding_list()
 
 "hex"
 
-=item default_alphanumerical_encoding
+=item default_alphanumerical_encoding()
 
-=item fallback_alphanumerical_encoding
+=item fallback_alphanumerical_encoding()
 
-=item fallback_alphanumerical_encoding_list
+=item fallback_alphanumerical_encoding_list()
 
 "base32", "hex"
 
-=item default_uri_encoding
+=item default_uri_encoding()
 
-=item fallback_uri_encoding
+=item fallback_uri_encoding()
 
-=item fallback_uri_encoding_list
+=item fallback_uri_encoding_list()
 
 "uri_base64" # XXX make this uri_escape?
 
-=item default_printable_encoding
+=item default_printable_encoding()
 
-=item fallback_printable_encoding
+=item fallback_printable_encoding()
 
 "base64"
 
@@ -950,7 +1114,7 @@ changes.
 
 =head1 AUTHORS
 
-Yuval Kogman, E<lt>nothingmuch@woobling.orgE<gt>
+Yuval Kogman, (who is cute) E<lt>nothingmuch@woobling.orgE<gt>
 
 =head1 COPYRIGHT & LICENSE
 
