@@ -15,12 +15,20 @@ __PACKAGE__->mk_accessors(qw/__digest_objects width hashes/);
 sub _digest_objects {
 	my $self = shift;
 
-	@{ $self->__digest_objects || do {
-		my @digests = map { eval { Digest->new($_) } || () } @{ $self->hashes || [qw/Whirlpool SHA1 SHA256 Tiger Haval256 MD5/] };
-		die "Can't find any digest module" unless @digests;
-		@digests = @digests[0 .. 2] if @digests > 3 and !$self->hashes; # if it's defaults limit to 3
-   		$self->__digest_objects(\@digests);
-	} };
+	@{ $self->__digest_objects || $self->_create_digest_objects };
+}
+
+sub _create_digest_objects {
+	my $self = shift;
+
+	my @digests = map { Digest->new($_) } @{ $self->hashes || [qw/SHA-1/] };
+
+	die "No digest module specified" unless @digests;
+
+	@digests = @digests[0 .. 2] if @digests > 3 and !$self->hashes; # if it's defaults limit to 3
+	$self->__digest_objects(\@digests);
+
+	return \@digests;
 }
 
 sub clone {
