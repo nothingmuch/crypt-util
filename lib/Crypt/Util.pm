@@ -657,7 +657,7 @@ __END__
 
 =head1 NAME
 
-Crypto::Util - A lightweight Crypt/Digest convenience API
+Crypt::Util - A lightweight Crypt/Digest convenience API
 
 =head1 SYNOPSIS
 
