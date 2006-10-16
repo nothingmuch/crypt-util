@@ -895,7 +895,7 @@ find the first from fallback_cipher_list
 
 =item fallback_cipher_list
 
-qw/Rijndael Twofish Blowfish IDEA RC6 RC5/;
+qw/Rijndael Serpent Twofish Blowfish RC6 RC5/
 
 =item default_digest
 
@@ -903,7 +903,7 @@ qw/Rijndael Twofish Blowfish IDEA RC6 RC5/;
 
 =item fallback_digest_list
 
-qw/SHA1 RIPEMD-160 Whirlpool MD5/
+qw/SHA-1 SHA-256 RIPEMD160 Whirlpool MD5 Haval256/
 
 =item default_encoding
 
