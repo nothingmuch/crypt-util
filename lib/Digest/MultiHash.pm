@@ -8,6 +8,7 @@ use warnings;
 use base qw/Class::Accessor::Fast Digest::base/;
 
 use Digest;
+use Digest::MoreFallbacks;
 
 __PACKAGE__->mk_accessors(qw/__digest_objects width hashes/);
 

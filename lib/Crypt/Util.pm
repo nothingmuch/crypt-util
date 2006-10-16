@@ -11,8 +11,7 @@ our $VERSION = "0.01_01";
 
 use Digest;
 use Storable;
-
-$Digest::MMAP{"RIPEMD160"} ||= $Digest::MMAP{"RIPEMD-160"} ||="Crypt::RIPEMD160";
+use Digest::MoreFallbacks;
 
 use Carp qw/croak/;
 
@@ -91,7 +90,7 @@ our %FALLBACK_LISTS = (
 	stream_mode             => [qw/CFB Ctr OFB/],
 	block_mode              => [qw/CBC/],
 	cipher                  => [qw/Rijndael Serpent Twofish Blowfish RC6 RC5/],
-	digest                  => [qw/SHA1 SHA256 RIPEMD160 Whirlpool MD5 Haval256/],
+	digest                  => [qw/SHA-1 SHA-256 RIPEMD160 Whirlpool MD5 Haval256/],
 	encoding                => [qw/hex/],
 	printable_encoding      => [qw/base64 hex/],
 	alphanumerical_encoding => [qw/base32 hex/],
@@ -351,7 +350,7 @@ sub process_key {
 			encode => 0,
 			digest_args => [{
 				width  => $size,
-				hashes => [ $self->fallback_digest_list ],
+				hashes => ["SHA-512"], # no need to be overkill, we just need the variable width
 			}],
 		);
 	}
