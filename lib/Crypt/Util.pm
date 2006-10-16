@@ -311,7 +311,7 @@ sub _cipher_object_baurem {
 	my ( $self, $class, %params ) = @_;
 
 	my $prefix = "Crypt";
-	( $prefix, $params{cipher} ) = ( Digest => delete $params{digest} ) if exists $params{digest};
+	( $prefix, $params{cipher} ) = ( Digest => delete $params{digest} ) if exists $params{encryption_digest};
 
 	$self->_process_params( \%params, qw/cipher/ );
 
