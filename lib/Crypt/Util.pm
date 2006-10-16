@@ -745,6 +745,18 @@ To ensure predictable behavior the fallback behavior can be disabled as necessar
 
 =back
 
+=head1 INTEROPERABILITY
+
+To ensure that your hashes and strings are compatible with L<Crypt::Util>
+deployments on other machines (where different Crypt/Digest modules are
+available, etc) you should use C<disable_fallback>.
+
+Then either set the default ciphers, or always explicitly state the cipher.
+
+If you are only encrypting and decrypting with the same installation, and new
+cryptographic modules are not being installed the hashes/ciphertexts should be
+compatible without disabling fallback.
+
 =head1 METHODS
 
 =over 4
