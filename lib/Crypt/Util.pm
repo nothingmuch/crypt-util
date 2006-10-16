@@ -131,12 +131,12 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 
 {
 	my %fallback_caches;
-	
+
 	sub _find_fallback {
 		my ( $self, $key, $test, @list ) = @_;
 
 		my $cache = $fallback_caches{$key} ||= {};
-	
+
 		@list = $list[0] if @list and $self->disable_fallback;
 
 		foreach my $elem ( @list ) {
@@ -155,7 +155,7 @@ sub _try_cipher_fallback {
 
 	local $@;
 	eval { require $file }; # yes it's portable
-	
+
 	return 1 if !$@;
 	die $@ if $@ !~ /^(?:Can|Could)(?: not|n't) (?:instantiate|load|locate) Crypt(?:::$name)?/i;
 	return;
@@ -195,10 +195,10 @@ sub _try_mode_fallback {
 	);
 
 	sub _try_encoding_fallback {
-		my ( $self, $encoding ) = @_;	
+		my ( $self, $encoding ) = @_;
 
 		return 1 if $encoding eq "hex";
-		
+
 		my $module = $encoding_module{$encoding};
 		$module =~ s{::}{/}g;
 		$module .= ".pm";
@@ -257,7 +257,7 @@ sub _process_param {
 
 sub cipher_object {
 	my ( $self, %params ) = _args @_;
-	
+
 	$self->_process_params( \%params, qw/mode/);
 
 	my $method = "cipher_object_" . lc(delete $params{mode});
@@ -482,7 +482,7 @@ sub _flag_hash_to_int {
 	foreach my $flag (@flags) {
 		$flags |= $bit if $flags{$flag};
 	} continue {
-		$bit *= 2;	
+		$bit *= 2;
 	}
 
 	return $flags;
