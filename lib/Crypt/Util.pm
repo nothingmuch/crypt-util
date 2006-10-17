@@ -1114,7 +1114,7 @@ changes.
 
 =head1 AUTHORS
 
-Yuval Kogman, (who is cute) E<lt>nothingmuch@woobling.orgE<gt>
+Yuval Kogman, E<lt>nothingmuch@woobling.orgE<gt>
 
 =head1 COPYRIGHT & LICENSE
 
