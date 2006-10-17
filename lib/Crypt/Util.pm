@@ -7,7 +7,7 @@ use warnings;
 
 use base qw/Class::Accessor::Fast/;
 
-our $VERSION = "0.01_02";
+our $VERSION = "0.01_03";
 
 use Digest;
 use Digest::MoreFallbacks;
