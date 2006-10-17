@@ -986,7 +986,6 @@ parameters of C<mac_string()> may also be specified to this method.,
 
 =back
 
-
 =item encrypt_string( [ $string ], %params )
 
 All of the parameters which may be supplied to C<process_key()> are
