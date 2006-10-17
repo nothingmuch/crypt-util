@@ -150,15 +150,7 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 
 sub _try_cipher_fallback {
 	my ( $self, $name ) = @_;
-
-	( my $file = "Crypt::${name}.pm" ) =~ s{::}{/}g;
-
-	local $@;
-	eval { require $file }; # yes it's portable
-
-	return 1 if !$@;
-	die $@ if $@ !~ /^(?:Can|Could)(?: not|n't) (?:instantiate|load|locate) Crypt(?:::$name)?/i;
-	return;
+	$self->_try_loading_module("Crypt::$name");
 }
 
 sub _try_digest_fallback {
@@ -175,8 +167,18 @@ sub _try_digest_fallback {
 
 sub _try_mode_fallback {
 	my ( $self, $mode ) = @_;
+	$self->_try_loading_module("Crypt::$mode");
+}
 
-	(my $file = "Crypt::${mode}.pm") =~ s{::}{/}g;
+sub _try_mac_fallback {
+	my ( $self, $mac ) = @_;
+	$self->_try_loading_module("Digest::$mac");
+}
+
+sub _try_loading_module {
+	my ( $self, $name ) = @_;
+
+	(my $file = "${name}.pm") =~ s{::}{/}g;
 
 	local $@;
 	eval { require $file }; # yes it's portable
