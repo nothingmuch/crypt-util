@@ -41,6 +41,8 @@ recommends 'Crypt::RIPEMD160'  => 0; # it's hip
 recommends 'Digest::Whirlpool' => 0; # it's happenning
 recommends 'Digest::MD5'       => 0; # it's still alive =(
 
+recommends "Digest::HMAC" => 0;
+
 license "MIT";
 
 all_from 'lib/Crypt/Util.pm';
