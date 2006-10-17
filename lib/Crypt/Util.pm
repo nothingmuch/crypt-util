@@ -337,14 +337,18 @@ sub process_key {
 		$self->_process_params( \%params, qw/key/ );
 		return $params{key};
 	} else {
-		$self->_process_params( \%params, qw/key cipher/ );
-		my $cipher = $params{cipher};
+		my $size = $params{key_size};
 
-		my $class = "Crypt::$cipher";
-		my $size_method = $class->can("keysize") || $class->can("blocksize");
-		my $size = $class->$size_method;
+		unless ( $size ) {
+			$self->_process_params( \%params, qw/key cipher/ );
+			my $cipher = $params{cipher};
 
-		$size ||= $cipher eq "Blowfish" ? 56 : 32;
+			my $class = "Crypt::$cipher";
+			my $size_method = $class->can("keysize") || $class->can("blocksize");
+			$size = $class->$size_method;
+
+			$size ||= $cipher eq "Blowfish" ? 56 : 32;
+		}
 
 		return $self->digest_string(
 			string => $params{key},
