@@ -1,3 +1,11 @@
+0.01_04
+		- Rerelease with the TT processed .pmc
+
+0.01_03
+		- MAC based digests
+		- MAC based tamper protected strings
+		- stub for OCB based tamper protected strings
+
 0.01_02
 		- Make Digest::MultiHash more predictable, so that varying installs
 		  will generate the same hashes.
