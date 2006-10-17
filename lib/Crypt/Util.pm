@@ -39,6 +39,7 @@ BEGIN {
 		encoding
 		digest
 		cipher
+		mac
 		key
 		default_uri_encoding
 		default_printable_encoding
@@ -90,6 +91,7 @@ our %FALLBACK_LISTS = (
 	block_mode              => [qw/CBC/],
 	cipher                  => [qw/Rijndael Serpent Twofish Blowfish RC6 RC5/],
 	digest                  => [qw/SHA-1 SHA-256 RIPEMD160 Whirlpool MD5 Haval256/],
+	mac                     => [qw/HMAC/],
 	encoding                => [qw/hex/],
 	printable_encoding      => [qw/base64 hex/],
 	alphanumerical_encoding => [qw/base32 hex/],
@@ -371,6 +373,58 @@ sub digest_object {
 	Digest->new( $params{digest}, @{ $params{digest_args} || [] } );
 }
 
+{
+	# this is a hack that gives to Digest::HMAC something that responds to ->new
+
+	package
+	Crypt::Util::HMACDigestFactory;
+
+	sub new {
+		my $self = shift;
+		$$self->clone;
+	}
+
+	sub new_factory {
+		my ( $self, $thing ) = @_;
+		return bless \$thing, $self;
+	}
+}
+
+sub mac_object {
+	my ( $self, %params ) = _args @_;
+
+	$self->_process_params( \%params, qw/
+		mac
+	/);
+
+	my $mac_type = delete $params{mac};
+
+	my $method = lc( "mac_object_$mac_type" );
+
+	$self->$method( %params );
+}
+
+sub mac_object_hmac {
+	my ( $self, @args ) = _args @_;
+
+	my $digest = $self->digest_object(@args);
+
+	my $digest_factory = Crypt::Util::HMACDigestFactory->new_factory( $digest );
+
+	my $key = $self->process_key(
+		literal_key => 1, # Digest::HMAC does it's own key processing, but we let the user force our own
+		key_size => 64,   # if the user did force our own, the default key_size is Digest::HMAC's default block size
+		@args,
+	);
+
+	require Digest::HMAC;
+	Digest::HMAC->new(
+		$key,
+		$digest_factory,
+		# FIXME hmac_block_size param?
+	);
+}
+
 use tt;
 [% FOR f IN ["en", "de"] %]
 sub [% f %]crypt_string {
@@ -407,27 +461,43 @@ sub _maybe_[% f %]code {
 [% END %]
 no tt;
 
-sub digest_string {
-	my ( $self, %params ) = _args @_, "string";
+sub _digest_string_with_object {
+	my ( $self, $object, %params ) = @_;
 
 	my $string = delete $params{string};
 	croak "You must provide the 'string' parameter" unless defined $string;
 
-	my $d = $self->digest_object( %params );
+	$object->add($string);
 
-	$d->add($string);
-
-	$self->_maybe_encode( $d->digest, \%params );
+	$self->_maybe_encode( $object->digest, \%params );
 }
 
-sub verify_hash {
+sub digest_string {
+	my ( $self, %params ) = _args @_, "string";
+
+	my $d = $self->digest_object( %params );
+
+	$self->_digest_string_with_object( $d, %params );
+}
+
+sub mac_digest_string {
+	my ( $self, %params ) = _args @_, "string";
+
+	my $d = $self->mac_object( %params );
+
+	$self->_digest_string_with_object( $d, %params );
+}
+
+sub _do_verify_hash {
 	my ( $self, %params ) = _args @_;
 
 	my $hash = delete $params{hash};
 	my $fatal = delete $params{fatal};
 	croak "You must provide the 'string' and 'hash' parameters" unless defined $params{string} and defined $hash;
 
-	return 1 if $hash eq $self->digest_string( %params );
+	my $meth = $params{digest_method};
+
+	return 1 if $hash eq $self->$meth(%params);
 
 	if ( $fatal ) {
 		croak "Digest verification failed";
@@ -436,9 +506,19 @@ sub verify_hash {
 	}
 }
 
+sub verify_hash {
+	my ( $self, @args ) = @_;
+	$self->_do_verify_hash(@args, digest_method => "digest_string");
+}
+
 sub verify_digest {
 	my ( $self, @args ) = @_;
 	$self->verify_hash(@args);
+}
+
+sub verify_mac {
+	my ( $self, @args ) = @_;
+	$self->_do_verify_hash(@args, digest_method => "mac_digest_string");
 }
 
 my @flags = qw/storable/;
