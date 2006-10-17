@@ -21,37 +21,55 @@ BEGIN {
 
 $c->default_key("foo");
 
-foreach my $data (
-	"zemoose gauhy tj lkj GAJE E djjjj laaaa di da dooo",
-	{ foo => "bar", gorch => [ qw/very deep/, 1 .. 10 ] },
-	"\0 bar evil binary string \0 \0\0 foo la \xff foo \0 bar",
-) {
+foreach my $encrypted ( 1, 0 ) {
 
-	my $tamper = $c->tamper_protected( data => $data );
+	foreach my $data (
+		"zemoose gauhy tj lkj GAJE E djjjj laaaa di da dooo",
+		{ foo => "bar", gorch => [ qw/very deep/, 1 .. 10 ] },
+		"\0 bar evil binary string \0 \0\0 foo la \xff foo \0 bar",
+	) {
 
-	my $thawed = $c->thaw_tamper_protected( string => $tamper );
+		my $tamper = $c->tamper_protected( data => $data, encrypt => $encrypted );
 
-	is_deeply( $thawed, $data, "tamper resistence round trips" );
+		unless ( ref $data ) {
+			if ( $encrypted ) {
+				unlike( $tamper, qr/\Q$data/, "tamper protected does not contain the original" )
+			} else {
+				like( $tamper, qr/\Q$data/, "tamper protected contains the original" )
+			}
+		}
 
-	my $corrupt_tamper = $tamper;
-	substr( $corrupt_tamper, -10, 5 ) ^= "moose";
+		my $thawed = $c->thaw_tamper_protected( string => $tamper );
 
-	throws_ok {
-		$c->thaw_tamper_protected( string => $corrupt_tamper );
-	} qr/verification failed/, "corrupt tamper proof string failed";
+		is_deeply( $thawed, $data, "tamper resistence round trips (" . ($encrypted ? "encrypted/digested" : "mac signed") .")" );
 
-	my $twaddled_tamper = $c->decrypt_string( string => $tamper );
-	substr( $twaddled_tamper, -10, 5 ) ^= "moose";
-	$twaddled_tamper = $c->encrypt_string( string => $twaddled_tamper );
+		my $corrupt_tamper = $tamper;
+		substr( $corrupt_tamper, -10, 5 ) ^= "moose";
 
-	throws_ok {
-		$c->thaw_tamper_protected( string => $twaddled_tamper );
-	} qr/verification failed/, "altered tamper proof string failed";
+		throws_ok {
+			$c->thaw_tamper_protected( string => $corrupt_tamper );
+		} qr/verification failed/, "corrupt tamper proof string failed";
 
-	local $Crypt::Util::TAMPER_PROTECT_VERSION = -1;
+		my $twaddled_tamper;
+		if ( $encrypted ) {
+			my ( $type, $inner ) = $c->_unpack_tamper_protected($tamper);
+			$twaddled_tamper = $c->decrypt_string( string => $inner );
+			substr( $twaddled_tamper, -10, 5 ) ^= "moose";
+			$twaddled_tamper = $c->_pack_tamper_protected($type, $c->encrypt_string( string => $twaddled_tamper ));
+		} else {
+			$twaddled_tamper = $tamper;
+			substr( $twaddled_tamper, -10, 5 ) ^= "moose";
+		}
 
-	throws_ok {
-		$c->thaw_tamper_protected( string => $twaddled_tamper );
-	} qr/Incompatible tamper protected string/, "altered tamper proof string failed";
+		throws_ok {
+			$c->thaw_tamper_protected( string => $twaddled_tamper );
+		} qr/verification failed/, "altered tamper proof string failed";
+
+		local $Crypt::Util::TAMPER_PROTECT_VERSION = -1;
+
+		throws_ok {
+			$c->thaw_tamper_protected( string => $tamper );
+		} qr/Incompatible tamper protected string/, "version check";
+	}
+
 }
-
