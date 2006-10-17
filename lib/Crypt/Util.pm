@@ -10,7 +10,6 @@ use base qw/Class::Accessor::Fast/;
 our $VERSION = "0.01_02";
 
 use Digest;
-use Storable;
 use Digest::MoreFallbacks;
 
 use Carp qw/croak/;
@@ -458,6 +457,7 @@ sub tamper_protected {
 
 	if ( ref $data ) {
 		$flags{storable} = 1;
+		require Storable;
 		$data = Storable::nfreeze($data);
 	}
 
@@ -515,9 +515,12 @@ sub thaw_tamper_protected {
 
 	my $data = unpack("x[n n] N/a*", $packed);
 
-	return $flags{storable}
-		? Storable::thaw($data)
-		: $data;
+	if ( $flags{storable} ) {
+		require Storable;
+		return Storable::thaw($data);
+	} else {
+		return $data;
+	}
 }
 
 sub tamper_unprotected {
