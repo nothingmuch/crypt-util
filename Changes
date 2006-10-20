@@ -1,3 +1,7 @@
+0.01
+		- Documentation improvements
+		- Rename tamper_protect* to tamper_proof
+
 0.01_04
 		- Rerelease with the TT processed .pmc
 
