@@ -14,22 +14,6 @@ use Digest::MoreFallbacks;
 
 use Carp qw/croak/;
 
-sub __curry_instance {
-	my ($class, $method_name, undef, $col) = @_;
-
-	my $self = $col->{instance} ||= $class->__curry_flavoured_instance($col);
-
-	sub { $self->$method_name(@_) };
-}
-
-sub __curry_flavoured_instance {
-	my ( $class, $col ) = @_;
-
-	my %params; @params{ map { "default_$_" } keys %{ $col->{defaults} } } = values %{ $col->{defaults} };
-
-	$class->new( \%params );
-}
-
 use Sub::Exporter;
 
 BEGIN {
@@ -868,6 +852,22 @@ no tt;
 sub exported_instance {
 	my $self = shift;
 	return $self;
+}
+
+sub __curry_instance {
+	my ($class, $method_name, undef, $col) = @_;
+
+	my $self = $col->{instance} ||= $class->__curry_flavoured_instance($col);
+
+	sub { $self->$method_name(@_) };
+}
+
+sub __curry_flavoured_instance {
+	my ( $class, $col ) = @_;
+
+	my %params; @params{ map { "default_$_" } keys %{ $col->{defaults} } } = values %{ $col->{defaults} };
+
+	$class->new( \%params );
 }
 
 __PACKAGE__;
