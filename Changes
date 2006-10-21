@@ -1,3 +1,6 @@
+0.02
+		- Rerelease with non-broken .pmc file =(
+
 0.01
 		- Documentation improvements
 		- Rename tamper_protect* to tamper_proof
