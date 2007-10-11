@@ -12,6 +12,8 @@ our $VERSION = "0.02";
 use Digest;
 use Digest::MoreFallbacks;
 
+use Perl6::Junction qw(any);
+
 use Carp qw/croak/;
 
 use Sub::Exporter;
@@ -19,6 +21,7 @@ use Sub::Exporter;
 BEGIN {
 	our @DEFAULT_ACCESSORS = qw/
 		mode
+		authenticated_mode
 		encode
 		encoding
 		digest
@@ -29,6 +32,7 @@ BEGIN {
 		printable_encoding
 		use_literal_key
 		tamper_proof_unencrypted
+		tamper_proof_authenticated_mode
 	/;
 
 	__PACKAGE__->mk_accessors( map { "default_$_" } @DEFAULT_ACCESSORS );
@@ -38,6 +42,7 @@ BEGIN {
 	my %export_groups = (
 		'crypt' => [qw/
 			encrypt_string decrypt_string
+			authenticated_encrypt_string
 			tamper_proof thaw_tamper_proof
 			cipher_object
 		/],
@@ -72,10 +77,13 @@ BEGIN {
 	});
 }
 
+our @KNOWN_AUTHENTICATING_MODES = qw(EAX OCB),
+
 our %FALLBACK_LISTS = (
 	mode                    => [qw/CFB CBC Ctr OFB/],
 	stream_mode             => [qw/CFB Ctr OFB/],
 	block_mode              => [qw/CBC/],
+	authenticated_mode      => [qw/EAX/], # OCB/], OCB is patented
 	cipher                  => [qw/Rijndael Serpent Twofish RC6 Blowfish RC5/],
 	digest                  => [qw/SHA-1 SHA-256 RIPEMD160 Whirlpool MD5 Haval256/],
 	mac                     => [qw/HMAC/],
@@ -309,7 +317,7 @@ sub _cipher_object_baurem {
 }
 
 use tt;
-[% FOR mode IN ["stream", "block"] %]
+[% FOR mode IN ["stream", "block","authenticated"] %]
 sub cipher_object_[% mode %] {
 	my ( $self, @args ) = _args @_;
 	my $mode = $self->_process_param("[% mode %]_mode");
@@ -574,9 +582,8 @@ sub tamper_proof_string {
 			mode
 		/);
 
-		if ( lc($params{mode}) eq "ocb" ) {
-			my $ciphertext = $self->ocb_tamper_proof_string( %params );
-			$self->_pack_hash_and_message( ocb => $ciphertext );
+		if ( $self->_authenticated_mode(\%params) ) {
+			return $self->authenticated_encrypt_string(%params);
 		} else {
 			my $ciphertext = $self->encrypt_and_digest_tamper_proof_string( %params );
 			return $self->_pack_tamper_proof( encrypted => $ciphertext );
@@ -605,6 +612,36 @@ sub tamper_proof_string {
 			$string,
 		);
 	}
+}
+
+sub _authenticated_mode {
+	my ( $self, $params ) = @_;
+
+	# trust explicit param
+	if ( exists $params->{authenticated_mode} ) {
+		$params->{mode} = delete $params->{authenticated_mode};
+		return 1;
+	}
+
+	# check if the explicit param is authenticating
+	if ( exists $params->{mode} ) {
+		# allow overriding
+		if ( exists $params->{mode_is_authenticating} ) {
+			return $params->{mode_is_authenticating};
+		}
+
+		if ( any( map { lc } @KNOWN_AUTHENTICATING_MODES ) eq lc($params->{mode}) ) {
+			return 1;
+		}
+	}
+
+	if ( $self->default_tamper_proof_authenticated_mode ) {
+		$self->_process_params( $params, qw(authenticated_mode) );
+		$params->{mode} = delete $params->{authenticated_mode};
+		return 1;
+	}
+
+	return;
 }
 
 sub _pack_hash_and_message {
@@ -671,9 +708,15 @@ sub _unpack_version_flags_and_string {
 	return ( $version, $flags, $string );
 }
 
-sub ocb_tamper_proof_string {
+sub authenticated_encrypt_string {
 	my ( $self, %params ) = _args @_, "string";
-	return $self->encrypt_string( %params, mode => "ocb" );
+
+	$self->_process_params( \%params, qw/
+		authenticated_mode
+	/);
+
+	my $mac_type = delete $params{mac};
+	return $self->encrypt_string( %params,  );
 }
 
 sub encrypt_and_digest_tamper_proof_string {
@@ -1453,7 +1496,9 @@ authentication modes.
 
 =item *
 
-OCB encryption mode (with implicit authentication)
+EAX/OCB encryption mode (with implicit authentication)
+
+=item *
 
 Bruce Schneier Fact Database
 L<http://geekz.co.uk/lovesraymond/archive/bruce-schneier-facts>.
