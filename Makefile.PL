@@ -6,6 +6,7 @@ use inc::Module::Install;
 
 name 'Crypt-Util';
 
+requires 'Perl6::Junction'       => 0;
 requires 'Class::Accessor::Fast' => 0;
 requires 'Digest'                => 0;
 requires 'Sub::Exporter'         => 0;
