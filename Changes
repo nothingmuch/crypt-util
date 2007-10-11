@@ -1,3 +1,6 @@
+0.04
+		- Missing dep
+
 0.03
 		- refactor data packing
 		- prepare for EAX/OCB block cipher modes wrt tamper resistent strings
