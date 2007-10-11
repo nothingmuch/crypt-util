@@ -65,11 +65,11 @@ foreach my $encrypted ( 1, 0 ) {
 			$c->thaw_tamper_proof( string => $twaddled_tamper );
 		} qr/verification failed/, "altered tamper proof string failed";
 
-		local $Crypt::Util::TAMPER_PROOF_VERSION = -1;
+		local $Crypt::Util::PACK_FORMAT_VERSION = 2;
 
 		throws_ok {
 			$c->thaw_tamper_proof( string => $tamper );
-		} qr/Incompatible tamper proof string/, "version check";
+		} qr/Incompatible packed string/, "version check";
 	}
 
 }

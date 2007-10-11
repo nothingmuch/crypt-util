@@ -509,7 +509,7 @@ sub verify_mac {
 }
 
 {
-	my @flags = qw/storable/;
+	my @flags = qw/serialized/;
 
 	sub _flag_hash_to_int {
 		my ( $self, $flags ) = @_;
@@ -542,28 +542,24 @@ sub verify_mac {
 	}
 }
 
-our $TAMPER_PROOF_VERSION = 1;
-
 sub tamper_proof {
 	my ( $self, %params ) = _args @_, "data";
 
-	$self->_process_params( \%params, qw/
-		data
-	/);
-
-	my $data = delete $params{data};
-
-	my %flags;
-
-	if ( ref $data ) {
-		$flags{storable} = 1;
-		require Storable;
-		$data = Storable::nfreeze($data);
-	}
-
-	my $packed = $self->_pack_version_flags_and_string( $TAMPER_PROOF_VERSION, \%flags, $data );
+	my $packed = $self->pack_data( %params );
 
 	$self->tamper_proof_string( %params, string => $packed );
+}
+
+sub freeze_data {
+	my ( $self, %params ) = @_;
+	require Storable;
+	Storable::nfreeze($params{data});
+}
+
+sub thaw_data {
+	my ( $self, %params ) = @_;
+	require Storable;
+	Storable::thaw($params{data});
 }
 
 sub tamper_proof_string {
@@ -619,6 +615,45 @@ sub _pack_hash_and_message {
 sub _unpack_hash_and_message {
 	my ( $self, $packed ) = @_;
 	unpack("n/a* a*", $packed);
+}
+
+our $PACK_FORMAT_VERSION = 1;
+
+sub pack_data {
+	my ( $self, %params ) = _args @_, "data";
+
+	$self->_process_params( \%params, qw/
+		data
+	/);
+
+	my $data = delete $params{data};
+
+	my %flags;
+
+	if ( ref $data ) {
+		$flags{serialized} = 1;
+		$data = $self->freeze_data( %params, data => $data );
+	}
+
+	$self->_pack_version_flags_and_string( $PACK_FORMAT_VERSION, \%flags, $data );
+}
+
+sub unpack_data {
+	my ( $self, %params ) = _args @_, "data";
+
+	$self->_process_params( \%params, qw/
+		data
+	/);
+
+	my ( $version, $flags, $data ) = $self->_unpack_version_flags_and_string($params{data});
+
+	$self->_packed_string_version_check( $version );
+
+	if ( $flags->{serialized} ) {
+		return $self->thaw_data( %params, data => $data );
+	} else {
+		return $data;
+	}
 }
 
 sub _pack_version_flags_and_string {
@@ -685,17 +720,7 @@ sub thaw_tamper_proof {
 	my $method = "thaw_tamper_proof_string_$type";
 
 	my $packed = $self->$method( %params, string => $message );
-
-	my ( $version, $flags, $data ) = $self->_unpack_version_flags_and_string($packed);
-
-	$self->_tamper_proof_version_check( $version );
-
-	if ( $flags->{storable} ) {
-		require Storable;
-		return Storable::thaw($data);
-	} else {
-		return $data;
-	}
+	$self->unpack_data(%params, data => $packed);
 }
 
 sub thaw_tamper_proof_string_encrypted {
@@ -735,11 +760,11 @@ sub thaw_tamper_proof_string_mac {
 	return $packed;
 }
 
-sub _tamper_proof_version_check {
+sub _packed_string_version_check {
 	my ( $self, $version ) = @_;
 
-	croak "Incompatible tamper proof string (I'm version $TAMPER_PROOF_VERSION, thawing version $version)"
-		unless $version == $TAMPER_PROOF_VERSION;
+	croak "Incompatible packed string (I'm version $PACK_FORMAT_VERSION, thawing version $version)"
+		unless $version == $PACK_FORMAT_VERSION;
 }
 
 use tt
