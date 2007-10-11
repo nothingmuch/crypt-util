@@ -1,3 +1,7 @@
+0.03
+		- refactor data packing
+		- prepare for EAX/OCB block cipher modes wrt tamper resistent strings
+
 0.02
 		- Rerelease with non-broken .pmc file =(
 
