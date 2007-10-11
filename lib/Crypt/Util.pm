@@ -810,7 +810,7 @@ sub _packed_string_version_check {
 		unless $version == $PACK_FORMAT_VERSION;
 }
 
-use tt
+use tt;
 [% FOR f IN ["en","de"] %]
 sub [% f %]code_string {
 	my ( $self, %params ) = _args @_, "string";
