@@ -77,7 +77,7 @@ BEGIN {
 	});
 }
 
-our @KNOWN_AUTHENTICATING_MODES = qw(EAX OCB),
+our @KNOWN_AUTHENTICATING_MODES = qw(EAX OCB GCM CWC CCM),
 
 our %FALLBACK_LISTS = (
 	mode                    => [qw/CFB CBC Ctr OFB/],
@@ -139,6 +139,7 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 			$cache->{$elem} = $self->$test( $elem ) unless exists $cache->{$elem};
 			return $elem if $cache->{$elem};
 		}
+
 
 		return;
 	}
@@ -589,15 +590,10 @@ sub tamper_proof_string {
 		: !$self->default_tamper_proof_unencrypted;
 
 	if ( $encrypted ) {
-		$self->_process_params( \%params, qw/
-			mode
-		/);
-
 		if ( $self->_authenticated_mode(\%params) ) {
-			return $self->authenticated_encrypt_string(%params);
+			return $self->_pack_tamper_proof( aead => $self->authenticated_encrypt_string(%params) );
 		} else {
-			my $ciphertext = $self->encrypt_and_digest_tamper_proof_string( %params );
-			return $self->_pack_tamper_proof( encrypted => $ciphertext );
+			croak "To use encrypted tamper resistent strings an authenticated encryption mode such as EAX must be selected";
 		}
 	} else {
 		my $signed = $self->mac_tamper_proof_string( %params );
@@ -606,7 +602,7 @@ sub tamper_proof_string {
 }
 
 {
-	my @tamper_proof_types = qw/encrypted mac ocb/;
+	my @tamper_proof_types = qw/mac aead/;
 	my %tamper_proof_type; @tamper_proof_type{@tamper_proof_types} = 1 .. @tamper_proof_types;
 
 	sub _pack_tamper_proof {
@@ -634,25 +630,24 @@ sub _authenticated_mode {
 		return 1;
 	}
 
-	# check if the explicit param is authenticating
+	# check if the explicit param is authenticated
 	if ( exists $params->{mode} ) {
 		# allow overriding
-		if ( exists $params->{mode_is_authenticating} ) {
-			return $params->{mode_is_authenticating};
+		if ( exists $params->{mode_is_authenticated} ) {
+			return $params->{mode_is_authenticated};
 		}
 
 		if ( any( map { lc } @KNOWN_AUTHENTICATING_MODES ) eq lc($params->{mode}) ) {
 			return 1;
+		} else {
+			return;
 		}
 	}
 
-	if ( $self->default_tamper_proof_authenticated_mode ) {
-		$self->_process_params( $params, qw(authenticated_mode) );
-		$params->{mode} = delete $params->{authenticated_mode};
-		return 1;
-	}
+	$self->_process_params( $params, qw(authenticated_mode) );
+	$params->{mode} = delete $params->{authenticated_mode};
 
-	return;
+	return 1;
 }
 
 sub _pack_hash_and_message {
