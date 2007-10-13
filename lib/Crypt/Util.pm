@@ -84,6 +84,7 @@ our %FALLBACK_LISTS = (
 	block_mode              => [qw/CBC/],
 	authenticated_mode      => [qw/EAX/], # OCB/], OCB is patented
 	cipher                  => [qw/Rijndael Serpent Twofish RC6 Blowfish RC5/],
+	#authenticated_cipher    => [qw/Phelix SOBER-128 Helix/], # not yet ready
 	digest                  => [qw/SHA-1 SHA-256 RIPEMD160 Whirlpool MD5 Haval256/],
 	mac                     => [qw/HMAC CMAC/],
 	encoding                => [qw/hex/],
