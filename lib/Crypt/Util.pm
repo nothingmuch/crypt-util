@@ -270,9 +270,9 @@ sub cipher_object {
 
 	$self->_process_params( \%params, qw/mode/);
 
-	my $method = "cipher_object_" . lc(delete $params{mode});
+	my $method = "cipher_object_" . lc(my $mode = delete $params{mode});
 
-	croak "mode $params{mode} is unsupported" unless $self->can($method);
+	croak "mode $mode is unsupported" unless $self->can($method);
 
 	$self->$method( %params );
 }
