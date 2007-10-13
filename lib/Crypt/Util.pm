@@ -32,7 +32,6 @@ BEGIN {
 		printable_encoding
 		use_literal_key
 		tamper_proof_unencrypted
-		tamper_proof_authenticated_mode
 	/;
 
 	__PACKAGE__->mk_accessors( map { "default_$_" } @DEFAULT_ACCESSORS );
@@ -275,6 +274,19 @@ sub cipher_object {
 	croak "mode $mode is unsupported" unless $self->can($method);
 
 	$self->$method( %params );
+}
+
+sub cipher_object_eax {
+	my ( $self, %params ) = _args @_;
+
+	$self->_process_params( \%params, qw/cipher/ );
+
+	require Crypt::EAX;
+
+	Crypt::EAX->new(
+		%params,
+		key => $self->process_key(%params),
+	);
 }
 
 sub cipher_object_cbc {
@@ -592,11 +604,8 @@ sub tamper_proof_string {
 		: !$self->default_tamper_proof_unencrypted;
 
 	if ( $encrypted ) {
-		if ( $self->_authenticated_mode(\%params) ) {
-			return $self->_pack_tamper_proof( aead => $self->authenticated_encrypt_string(%params) );
-		} else {
-			croak "To use encrypted tamper resistent strings an authenticated encryption mode such as EAX must be selected";
-		}
+		my $ciphertext = $self->authenticated_tamper_proof_string(%params);
+		return $self->_pack_tamper_proof( aead => $ciphertext );
 	} else {
 		my $signed = $self->mac_tamper_proof_string( %params );
 		$self->_pack_tamper_proof( mac => $signed );
@@ -718,30 +727,17 @@ sub _unpack_version_flags_and_string {
 sub authenticated_encrypt_string {
 	my ( $self, %params ) = _args @_, "string";
 
-	$self->_process_params( \%params, qw/
-		authenticated_mode
-	/);
-
-	my $mac_type = delete $params{mac};
-	return $self->encrypt_string( %params,  );
+	if ( $self->_authenticated_mode(\%params) ) {
+		return $self->encrypt_string( %params );
+	} else {
+		croak "To use encrypted tamper resistent strings an authenticated encryption mode such as EAX must be selected";
+	}
 }
 
-sub encrypt_and_digest_tamper_proof_string {
+sub authenticated_tamper_proof_string {
 	my ( $self, %params ) = _args @_, "string";
 
-	my $string = delete $params{string};
-	croak "You must provide the 'string' parameter" unless defined $string;
-
-	my $hash = $self->digest_string(
-		%params,
-		encode => 0,
-		string => $string,
-	);
-
-	return $self->encrypt_string(
-		%params,
-		string => $self->_pack_hash_and_message( $hash, $string ),
-	);
+	$self->authenticated_encrypt_string( %params );
 }
 
 sub mac_tamper_proof_string {
@@ -773,22 +769,13 @@ sub thaw_tamper_proof {
 	$self->unpack_data(%params, data => $packed);
 }
 
-sub thaw_tamper_proof_string_encrypted {
+sub thaw_tamper_proof_string_aead {
 	my ( $self, %params ) = _args @_, "string";
 
-	my $hashed_packed = $self->decrypt_string( %params );
-
-	my ( $hash, $packed ) = $self->_unpack_hash_and_message( $hashed_packed );
-
-	return unless $self->verify_hash(
-		fatal  => 1,
+	return $self->decrypt_string(
+		fatal => 1,
 		%params, # allow user to override fatal
-		hash   => $hash,
-		decode => 0,
-		string => $packed,
 	);
-
-	return $packed;
 }
 
 sub thaw_tamper_proof_string_mac {

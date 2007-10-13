@@ -14,7 +14,8 @@ BEGIN {
 	$c = Crypt::Util->new;
 
 	eval { $c->fallback_digest; $c->fallback_cipher; $c->fallback_mac; $c->fallback_authenticated_mode };
-	plan skip_all => "Couldn't load $1" if $@ =~ /^Couldn't load any (\w+)/;
+	plan skip_all => "$1" if $@ =~ /(Couldn't load any \w+)/;
+	plan skip_all => "Couldn't load fallback" if $@;
 
 	plan 'no_plan';
 }
@@ -29,7 +30,11 @@ foreach my $encrypted ( 1, 0 ) { # encrypted not yet supported
 		"\0 bar evil binary string \0 \0\0 foo la \xff foo \0 bar",
 	) {
 
-		my $tamper = eval { $c->tamper_proof( data => $data, encrypt => $encrypted ) };
+		my $tamper;
+
+		lives_ok { $tamper = $c->tamper_proof( data => $data, encrypt => $encrypted ) } "tamper proofing lived (" . ($encrypted ? "aead" : "mac signed") .")";
+
+		ok( defined($tamper), "got some output" );
 
 		unless ( ref $data ) {
 			if ( $encrypted ) {
@@ -39,9 +44,13 @@ foreach my $encrypted ( 1, 0 ) { # encrypted not yet supported
 			}
 		}
 
-		my $thawed = eval { $c->thaw_tamper_proof( string => $tamper ) };
+		my $thawed;
 
-		is_deeply( $thawed, $data, "tamper resistence round trips (" . ($encrypted ? "encrypted/digested" : "mac signed") .")" );
+		lives_ok { $thawed = $c->thaw_tamper_proof( string => $tamper ) } "tamper proof thaw lived";
+
+		ok( defined($thawed), "got some output" );
+
+		is_deeply( $thawed, $data, "tamper resistence round trips (" . ($encrypted ? "aead" : "mac signed") .")" );
 
 		my $corrupt_tamper = $tamper;
 		substr( $corrupt_tamper, -10, 5 ) ^= "moose";
@@ -49,6 +58,7 @@ foreach my $encrypted ( 1, 0 ) { # encrypted not yet supported
 		throws_ok {
 			$c->thaw_tamper_proof( string => $corrupt_tamper );
 		} qr/verification failed/, "corrupt tamper proof string failed";
+
 
 		my $twaddled_tamper;
 		if ( $encrypted ) {
