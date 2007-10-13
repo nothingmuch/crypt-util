@@ -329,7 +329,7 @@ sub _cipher_object_baurem {
 }
 
 use tt;
-[% FOR mode IN ["stream", "block","authenticated"] %]
+[% FOR mode IN ["stream", "block", "authenticated"] %]
 sub cipher_object_[% mode %] {
 	my ( $self, @args ) = _args @_;
 	my $mode = $self->_process_param("[% mode %]_mode");
