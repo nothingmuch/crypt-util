@@ -45,6 +45,7 @@ recommends 'Digest::Whirlpool' => 0; # it's happenning
 recommends 'Digest::MD5'       => 0; # it's still alive =(
 
 recommends "Digest::HMAC" => 0;
+recommends "Digest::CMAC" => 0;
 
 license "MIT";
 
