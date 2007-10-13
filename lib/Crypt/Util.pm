@@ -272,6 +272,8 @@ sub cipher_object {
 
 	my $method = "cipher_object_" . lc(delete $params{mode});
 
+	croak "mode $params{mode} is unsupported" unless $self->can($method);
+
 	$self->$method( %params );
 }
 
