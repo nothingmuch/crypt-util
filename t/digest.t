@@ -8,14 +8,16 @@ use Test::Exception;
 
 use ok "Crypt::Util";
 
-my ( $c, $fallback_digest );
+my ( $c, $fallback_digest, $fallback_mac );
 BEGIN {
 
 	$c = Crypt::Util->new;
 
 	$fallback_digest = eval { $c->fallback_digest };
+	plan skip_all => "Couldn't load any digest" if $@;
 
-	plan skip_all => "Couldn't load any digest" if $@ =~ /^Couldn't load any digest/;
+	$fallback_mac = eval { $c->fallback_mac };
+	plan skip_all => "Couldn't load any mac" if $@;
 
 	plan 'no_plan';
 }

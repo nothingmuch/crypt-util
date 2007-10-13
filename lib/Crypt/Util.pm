@@ -152,12 +152,15 @@ sub _try_cipher_fallback {
 sub _try_digest_fallback {
 	my ( $self, $name ) = @_;
 
-	local $@;
-	eval { $self->digest_object( digest => $name ) };
+	my $e = do {
+		local $@;
+		eval { $self->digest_object( digest => $name ) };
+		$@;
+	};
 
-	return 1 if !$@;
+	return 1 if !$e;
 	( my $file = $name ) =~ s{::}{/}g;
-	die $@ if $@ !~ m{^Can't locate Digest/${file}.pm in \@INC};
+	die $e if $e !~ m{^Can't locate Digest/\Q${file}.pm\E in \@INC};
 	return;
 }
 
@@ -176,11 +179,14 @@ sub _try_loading_module {
 
 	(my $file = "${name}.pm") =~ s{::}{/}g;
 
-	local $@;
-	eval { require $file }; # yes it's portable
+	my $e = do {
+		local $@;
+		eval { require $file }; # yes it's portable
+		$@;
+	};
 
-	return 1 if !$@;
-	die $@ if $@ !~ /^Can't locate $file in \@INC/;
+	return 1 if !$e;
+	die $e if $e !~ /^Can't locate \Q$file\E in \@INC/;
 	return;
 }
 
@@ -201,10 +207,15 @@ sub _try_loading_module {
 		$module =~ s{::}{/}g;
 		$module .= ".pm";
 
-		local $@;
-		eval { require $module };
+		my $e = do {
+			local $@;
+			eval { require $module }; # yes it's portable
+			$@;
+		};
 
-		return !$@;
+		return 1 if !$e;
+		die $e if $e !~ /^Can't locate \Q$module\E in \@INC/;
+		return;
 	}
 }
 
