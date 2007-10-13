@@ -646,8 +646,7 @@ sub _authenticated_mode {
 		}
 	}
 
-	$self->_process_params( $params, qw(authenticated_mode) );
-	$params->{mode} = delete $params->{authenticated_mode};
+	$params->{mode} = $self->_process_param('authenticated_mode');
 
 	return 1;
 }
