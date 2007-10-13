@@ -6,6 +6,8 @@ use inc::Module::Install;
 
 name 'Crypt-Util';
 
+perl_version '5.008';
+
 requires 'Perl6::Junction'       => 0;
 requires 'Class::Accessor::Fast' => 0;
 requires 'Digest'                => 0;
