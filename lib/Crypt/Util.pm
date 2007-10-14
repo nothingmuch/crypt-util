@@ -286,7 +286,8 @@ sub cipher_object_eax {
 
 	Crypt::EAX->new(
 		%params,
-		key => $self->process_key(%params),
+		cipher => "Crypt::$params{cipher}",
+		key    => $self->process_key(%params),
 	);
 }
 
@@ -604,13 +605,14 @@ sub tamper_proof_string {
 		? $params{encrypt}
 		: !$self->default_tamper_proof_unencrypted;
 
-	if ( $encrypted ) {
-		my $ciphertext = $self->authenticated_tamper_proof_string(%params);
-		return $self->_pack_tamper_proof( aead => $ciphertext );
-	} else {
-		my $signed = $self->mac_tamper_proof_string( %params );
-		$self->_pack_tamper_proof( mac => $signed );
-	}
+
+	my $type = ( $encrypted ? "aead" : "mac" );
+
+	my $method = "${type}_tamper_proof_string";
+
+	my $string = $self->$method( %params );
+
+	return $self->_pack_tamper_proof( $type => $string );
 }
 
 {
@@ -735,7 +737,20 @@ sub authenticated_encrypt_string {
 	}
 }
 
-sub authenticated_tamper_proof_string {
+sub authenticated_decrypt_string {
+	my ( $self, %params ) = _args @_, "string";
+
+	if ( $self->_authenticated_mode(\%params) ) {
+		return $self->decrypt_string(
+			fatal => 1,
+			%params,
+		);
+	} else {
+		croak "To use encrypted tamper resistent strings an authenticated encryption mode such as EAX must be selected";
+	}
+}
+
+sub aead_tamper_proof_string {
 	my ( $self, %params ) = _args @_, "string";
 
 	$self->authenticated_encrypt_string( %params );
@@ -773,10 +788,7 @@ sub thaw_tamper_proof {
 sub thaw_tamper_proof_string_aead {
 	my ( $self, %params ) = _args @_, "string";
 
-	return $self->decrypt_string(
-		fatal => 1,
-		%params, # allow user to override fatal
-	);
+	$self->authenticated_decrypt_string( %params );
 }
 
 sub thaw_tamper_proof_string_mac {

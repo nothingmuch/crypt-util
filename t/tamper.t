@@ -57,7 +57,7 @@ foreach my $encrypted ( 1, 0 ) { # encrypted not yet supported
 
 		throws_ok {
 			$c->thaw_tamper_proof( string => $corrupt_tamper );
-		} qr/verification failed/, "corrupt tamper proof string failed";
+		} qr/verification.*failed/i, "corrupt tamper proof string failed";
 
 
 		my $twaddled_tamper;
@@ -73,7 +73,7 @@ foreach my $encrypted ( 1, 0 ) { # encrypted not yet supported
 
 		throws_ok {
 			$c->thaw_tamper_proof( string => $twaddled_tamper );
-		} qr/verification failed/, "altered tamper proof string failed";
+		} qr/verification.*failed/i, "altered tamper proof string failed";
 
 		local $Crypt::Util::PACK_FORMAT_VERSION = 2;
 
