@@ -16,7 +16,7 @@ my $c = Crypt::Util->new;
 
 isa_ok( $c, "Crypt::Util" );
 
-is( $c->default_cipher, undef, "no default cipher" );
+ok( !$c->has_default_cipher, "no default cipher" );
 
 my $fallback_cipher = eval { $c->fallback_cipher };
 
@@ -53,7 +53,7 @@ SKIP: {
 	is( $c->decrypt_string( string => $encoded, decode => 1 ), $c->decrypt_string( string => $binary ), "decoded == binary" );
 }
 
-is( $c->default_digest, undef, "no default digest" );
+ok( !$c->has_default_digest, "no default digest" );
 
 my $fallback_digest = eval { $c->fallback_digest };
 

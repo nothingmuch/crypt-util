@@ -1,13 +1,9 @@
 #!/usr/bin/perl
 
 package Crypt::Util;
+use Moose;
 
-use strict;
-use warnings;
-
-use base qw/Class::Accessor::Fast/;
-
-our $VERSION = "0.06";
+our $VERSION = "0.07";
 
 use Digest;
 use Digest::MoreFallbacks;
@@ -17,64 +13,67 @@ use Perl6::Junction qw(any);
 use Carp qw/croak/;
 
 use Sub::Exporter;
+use Data::OptList;
 
-BEGIN {
-	our @DEFAULT_ACCESSORS = qw/
-		mode
-		authenticated_mode
-		encode
-		encoding
-		digest
-		cipher
-		mac
-		key
-		uri_encoding
-		printable_encoding
-		use_literal_key
-		tamper_proof_unencrypted
-	/;
+use namespace::clean -except => [qw(meta)];
 
-	__PACKAGE__->mk_accessors( map { "default_$_" } @DEFAULT_ACCESSORS );
+our %DEFAULT_ACCESSORS = (
+	mode                     => { isa => "Str" },
+	authenticated_mode       => { isa => "Str" },
+	encode                   => { isa => "Bool" },
+	encoding                 => { isa => "Str" },
+	printable_encoding       => { isa => "Str" },
+	alphanumerical_encoding  => { isa => "Str" },
+	uri_encoding             => { isa => "Str" },
+	digest                   => { isa => "Str" },
+	cipher                   => { isa => "Str" },
+	mac                      => { isa => "Str" },
+	key                      => { isa => "Str" },
+	uri_encoding             => { isa => "Str" },
+	printable_encoding       => { isa => "Str" },
+	use_literal_key          => { isa => "Bool" },
+	tamper_proof_unencrypted => { isa => "Bool" },
+	nonce                    => { isa => "Str", default => '' },
+);
 
-	__PACKAGE__->mk_accessors("disable_fallback");
+our @DEFAULT_ACCESSORS = keys %DEFAULT_ACCESSORS;
 
-	my %export_groups = (
-		'crypt' => [qw/
-			encrypt_string decrypt_string
-			authenticated_encrypt_string
-			tamper_proof thaw_tamper_proof
-			cipher_object
-		/],
-		digest => [qw/
-			digest_string verify_hash verify_digest
-			digest_object
-			mac_digest_string
-			verify_mac
-		/],
-		encoding => [qw/
-			encode_string decode_string
-			encode_string_hex decode_string_hex
-			encode_string_base64 decode_string_base64 encode_string_base64_wrapped
-			encode_string_base32 decode_string_base32
-			encode_string_uri_base64 decode_string_uri_base64
-			encode_string_uri decode_string_uri
-			encode_string_alphanumerical decode_string_alphanumerical
-			encode_string_printable decode_string_printable
-			encode_string_uri_escape decode_string_uri_escape
-		/],
-		params => [ "exported_instance", "disable_fallback", map { "default_$_" } @DEFAULT_ACCESSORS ],
-	);
+my %export_groups = (
+	'crypt' => [qw/
+	encrypt_string decrypt_string
+	authenticated_encrypt_string
+	tamper_proof thaw_tamper_proof
+	cipher_object
+	/],
+	digest => [qw/
+	digest_string verify_hash verify_digest
+	digest_object
+	mac_digest_string
+	verify_mac
+	/],
+	encoding => [qw/
+	encode_string decode_string
+	encode_string_hex decode_string_hex
+	encode_string_base64 decode_string_base64 encode_string_base64_wrapped
+	encode_string_base32 decode_string_base32
+	encode_string_uri_base64 decode_string_uri_base64
+	encode_string_uri decode_string_uri
+	encode_string_alphanumerical decode_string_alphanumerical
+	encode_string_printable decode_string_printable
+	encode_string_uri_escape decode_string_uri_escape
+	/],
+	params => [ "exported_instance", "disable_fallback", map { "default_$_" } @DEFAULT_ACCESSORS ],
+);
 
-	my %exports = map { $_ => \&__curry_instance } map { @$_ } values %export_groups;
+my %exports = map { $_ => \&__curry_instance } map { @$_ } values %export_groups;
 
-	Sub::Exporter->import( -setup => {
-		exports    => \%exports,
-		groups     => \%export_groups,
-		collectors => {
-			defaults => sub { 1 },
-		},
-	});
-}
+Sub::Exporter->import( -setup => {
+	exports    => \%exports,
+	groups     => \%export_groups,
+	collectors => {
+		defaults => sub { 1 },
+	},
+});
 
 our @KNOWN_AUTHENTICATING_MODES = qw(EAX OCB GCM CWC CCM),
 
@@ -125,6 +124,26 @@ foreach my $fallback ( keys %FALLBACK_LISTS ) {
 	*{ $list_method } = $list_method_sub;
 }
 
+foreach my $attr ( @DEFAULT_ACCESSORS ) {
+	has "default_$attr" => (
+		is => "rw",
+		predicate => "has_default_$attr",
+		clearer   => "clear_default_$attr",
+		( __PACKAGE__->can("fallback_$attr") ? (
+			lazy_build => 1,
+			builder => "fallback_$attr",
+		) : () ),
+		%{ $DEFAULT_ACCESSORS{$attr} },
+	);
+}
+
+has disable_fallback => (
+	isa => "Bool",
+	is  => "rw",
+);
+
+__PACKAGE__->meta->make_immutable;
+
 {
 	my %fallback_caches;
 
@@ -153,10 +172,12 @@ sub _try_cipher_fallback {
 sub _try_digest_fallback {
 	my ( $self, $name ) = @_;
 
-	my $e = do {
+	my $e;
+
+	{
 		local $@;
 		eval { $self->digest_object( digest => $name ) };
-		$@;
+		$e = $@;
 	};
 
 	return 1 if !$e;
@@ -254,16 +275,11 @@ sub _process_param {
 
 	my $default = "default_$param";
 
-	if ( $self->can($default) and defined( my $value = $self->$default ) ) {
-		return $value;
+	if ( $self->can($default) ) {
+		return $self->$default;
 	}
 
-	my $fallback = "fallback_$param";
-	if ( $self->can($fallback) ) {
-		return $self->$fallback;
-	} else {
-		croak "No default value for required parameter '$param'";
-	}
+	croak "No default value for required parameter '$param'";
 }
 
 sub cipher_object {
@@ -281,7 +297,7 @@ sub cipher_object {
 sub cipher_object_eax {
 	my ( $self, %params ) = _args @_;
 
-	$self->_process_params( \%params, qw/cipher/ );
+	$self->_process_params( \%params, qw/cipher nonce/ );
 
 	require Crypt::EAX;
 
@@ -369,8 +385,12 @@ sub process_key {
 			my $cipher = $params{cipher};
 
 			my $class = "Crypt::$cipher";
-			my $size_method = $class->can("keysize") || $class->can("blocksize");
-			$size = $class->$size_method;
+
+			$self->_try_loading_module($class);
+
+			if ( my $size_method = $class->can("keysize") || $class->can("blocksize") ) {
+				$size = $class->$size_method;
+			}
 
 			$size ||= $cipher eq "Blowfish" ? 56 : 32;
 		}
@@ -1517,8 +1537,8 @@ Crypt::SaltedHash support
 
 =item *
 
-CMAC, EMAC (maybe, the modules are not OO and require refactoring) message
-authentication modes.
+EMAC (maybe, the modules are not OO and require refactoring) message
+authentication mode
 
 =item *
 
