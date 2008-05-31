@@ -305,6 +305,7 @@ sub cipher_object_eax {
 		%params,
 		cipher => "Crypt::$params{cipher}", # FIXME take a ref, but Crypt::CFB will barf
 		key    => $self->process_key(%params),
+		nonce  => $params{nonce},
 	);
 }
 
