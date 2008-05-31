@@ -40,27 +40,27 @@ our @DEFAULT_ACCESSORS = keys %DEFAULT_ACCESSORS;
 
 my %export_groups = (
 	'crypt' => [qw/
-	encrypt_string decrypt_string
-	authenticated_encrypt_string
-	tamper_proof thaw_tamper_proof
-	cipher_object
+		encrypt_string decrypt_string
+		authenticated_encrypt_string
+		tamper_proof thaw_tamper_proof
+		cipher_object
 	/],
 	digest => [qw/
-	digest_string verify_hash verify_digest
-	digest_object
-	mac_digest_string
-	verify_mac
+		digest_string verify_hash verify_digest
+		digest_object
+		mac_digest_string
+		verify_mac
 	/],
 	encoding => [qw/
-	encode_string decode_string
-	encode_string_hex decode_string_hex
-	encode_string_base64 decode_string_base64 encode_string_base64_wrapped
-	encode_string_base32 decode_string_base32
-	encode_string_uri_base64 decode_string_uri_base64
-	encode_string_uri decode_string_uri
-	encode_string_alphanumerical decode_string_alphanumerical
-	encode_string_printable decode_string_printable
-	encode_string_uri_escape decode_string_uri_escape
+		encode_string decode_string
+		encode_string_hex decode_string_hex
+		encode_string_base64 decode_string_base64 encode_string_base64_wrapped
+		encode_string_base32 decode_string_base32
+		encode_string_uri_base64 decode_string_uri_base64
+		encode_string_uri decode_string_uri
+		encode_string_alphanumerical decode_string_alphanumerical
+		encode_string_printable decode_string_printable
+		encode_string_uri_escape decode_string_uri_escape
 	/],
 	params => [ "exported_instance", "disable_fallback", map { "default_$_" } @DEFAULT_ACCESSORS ],
 );
