@@ -1,3 +1,6 @@
+0.06
+		- Tamper resistence is now based on the authenticating crypto modes
+
 0.05
 		- Ugh, forgot to regen .pmc *again*
 
