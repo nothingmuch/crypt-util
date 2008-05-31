@@ -448,6 +448,23 @@ sub mac_object_hmac {
 	);
 }
 
+sub mac_object_cmac {
+	my ( $self, %params ) = _args @_;
+
+	my ( $key, $cipher );
+
+	if ( ref $params{cipher} ) {
+		$cipher = $params{cipher};
+	} else {
+		$self->_process_params( \%params, qw(cipher) );
+		$cipher = "Crypt::" . $params{cipher};
+		$key    = $self->process_key(%params);
+	}
+
+	require Digest::CMAC;
+	Digest::CMAC->new( $key, $cipher );
+}
+
 use tt;
 [% FOR f IN ["en", "de"] %]
 sub [% f %]crypt_string {
