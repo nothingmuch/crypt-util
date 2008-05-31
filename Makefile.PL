@@ -13,6 +13,7 @@ requires 'Class::Accessor::Fast' => 0;
 requires 'Digest'                => 0;
 requires 'Sub::Exporter'         => 0;
 requires 'Storable'              => 0;
+requires 'Data::GUID'            => 0;
 
 build_requires 'Test::More'      => 0;
 build_requires 'Test::use::ok'   => 0;

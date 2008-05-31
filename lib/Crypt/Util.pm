@@ -33,7 +33,7 @@ our %DEFAULT_ACCESSORS = (
 	printable_encoding       => { isa => "Str" },
 	use_literal_key          => { isa => "Bool" },
 	tamper_proof_unencrypted => { isa => "Bool" },
-	nonce                    => { isa => "Str", default => '' },
+	nonce                    => { isa => "Str", default => "" },
 );
 
 our @DEFAULT_ACCESSORS = keys %DEFAULT_ACCESSORS;
@@ -371,6 +371,19 @@ sub cipher_object_[% mode %] {
 }
 [% END %]
 no tt;
+
+sub process_nonce {
+	my ( $self, %params ) = _args @_, 'nonce';
+
+	my $nonce = $self->_process_params( \%params, 'nonce' );
+
+	if ( length($nonce) ) {
+		return $nonce;
+	} else {
+		require Data::GUID;
+		Data::GUID->new->as_binary;
+	}
+}
 
 sub process_key {
 	my ( $self, %params ) = _args @_, "key";
@@ -771,7 +784,12 @@ sub authenticated_encrypt_string {
 
 	# FIXME some ciphers are authenticated, but none are implemented in perl yet
 	if ( $self->_authenticated_mode(\%params) ) {
-		return $self->encrypt_string( %params );
+		$self->_process_params( \%params, qw(nonce) );
+
+		# generate a nonce unless one is explicitly provided
+		my $nonce = $self->process_nonce(%params);
+
+		return pack("n/a* a*", $nonce, $self->encrypt_string( %params, nonce => $nonce ) );
 	} else {
 		croak "To use encrypted tamper resistent strings an authenticated encryption mode such as EAX must be selected";
 	}
@@ -781,9 +799,15 @@ sub authenticated_decrypt_string {
 	my ( $self, %params ) = _args @_, "string";
 
 	if ( $self->_authenticated_mode(\%params) ) {
+		$self->_process_params( \%params, qw(string) );
+
+		my ( $nonce, $string ) = unpack("n/a* a*", $params{string});
+
 		return $self->decrypt_string(
 			fatal => 1,
 			%params,
+			nonce  => $nonce,
+			string => $string,
 		);
 	} else {
 		croak "To use encrypted tamper resistent strings an authenticated encryption mode such as EAX must be selected";
