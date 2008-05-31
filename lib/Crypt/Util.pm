@@ -1504,10 +1504,6 @@ authentication modes.
 
 =item *
 
-EAX/OCB encryption mode (with implicit authentication)
-
-=item *
-
 Bruce Schneier Fact Database
 L<http://geekz.co.uk/lovesraymond/archive/bruce-schneier-facts>.
 
