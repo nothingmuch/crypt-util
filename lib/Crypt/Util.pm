@@ -180,15 +180,16 @@ sub _try_loading_module {
 
 	(my $file = "${name}.pm") =~ s{::}{/}g;
 
-	my $e = do {
+	my ( $r, $e );
+	{
 		local $@;
-		eval { require $file }; # yes it's portable
-		$@;
+		$r = eval { require $file }; # yes it's portable
+		$e = $@;
 	};
 
-	return 1 if !$e;
+	return $r if $r;
 	die $e if $e !~ /^Can't locate \Q$file\E in \@INC/;
-	return;
+	return $r;
 }
 
 {
