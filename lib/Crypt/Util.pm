@@ -1550,8 +1550,6 @@ reccomended.
 
 =head1 TODO
 
-Features which are currently missing but are scheduled for 0.02 or 0.03:
-
 =over 4
 
 =item *
@@ -1581,6 +1579,14 @@ Additional data formats (streams/iterators, filehandles, generalized storable
 data/string handling for all methods, not just tamper_proof).
 
 Streams should also be able to used via a simple push api.
+
+=item *
+
+IV/nonce/salt support for the various cipher modes, not just EAX (CBC, CCM, GCM, etc)
+
+=item *
+
+L<Crypt::Rijndael> can do its own cipher modes
 
 =head1 SEE ALSO
 
