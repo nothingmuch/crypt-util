@@ -6,11 +6,11 @@ use warnings;
 use Test::More;
 use Test::Exception;
 
-use ok "Crypt::Util";
+use Crypt::Util;
 
 my ( $c, $fallback_cipher );
-BEGIN {
 
+BEGIN {
 	$c = Crypt::Util->new;
 
 	$fallback_cipher = eval { $c->fallback_cipher };

@@ -6,11 +6,11 @@ use warnings;
 use Test::More;
 use Test::Exception;
 
-use ok "Crypt::Util";
+use Crypt::Util;
 
 my $c;
-BEGIN {
 
+BEGIN {
 	$c = Crypt::Util->new;
 
 	eval { $c->fallback_digest; $c->fallback_cipher; $c->fallback_mac; $c->fallback_authenticated_mode };
