@@ -286,7 +286,7 @@ sub cipher_object_eax {
 
 	Crypt::EAX->new(
 		%params,
-		cipher => "Crypt::$params{cipher}",
+		cipher => "Crypt::$params{cipher}", # FIXME take a ref, but Crypt::CFB will barf
 		key    => $self->process_key(%params),
 	);
 }
@@ -730,6 +730,7 @@ sub _unpack_version_flags_and_string {
 sub authenticated_encrypt_string {
 	my ( $self, %params ) = _args @_, "string";
 
+	# FIXME some ciphers are authenticated, but none are implemented in perl yet
 	if ( $self->_authenticated_mode(\%params) ) {
 		return $self->encrypt_string( %params );
 	} else {
