@@ -1048,6 +1048,15 @@ Crypt::Util - A lightweight Crypt/Digest convenience API
 This module provides an easy, intuitive and forgiving API for wielding
 crypto-fu.
 
+The API is designed as a cascade, with rich features built using simpler ones.
+this means that the option processing is uniform throughout, and the behaviors
+are generally predictable.
+
+Note that L<Crypt::Util> doesn't do any crypto on its own, but delegates the
+actual work to the various other crypto modules on the CPAN. L<Crypt::Util>
+merely wraps these modules, providing uniform parameters, and building on top
+of their polymorphism with higher level features.
+
 =head2 Priorities
 
 =over 4
@@ -1125,9 +1134,13 @@ handling default values.
 
 =item thaw_tamper_proof( [ $string ], %params )
 
-=item tamper_proof_string $string, %params
+=item tamper_proof_string( $string, %params )
 
-=item thaw_tamper_proof_string $string, %params
+=item thaw_tamper_proof_string( $string, %params )
+
+=item aead_tamper_proof_string( [ $string ], %params )
+
+=item mac_tamper_proof_string( [ $string ], %params )
 
 The C<tamper_proof> method is in an intermittent state, in that the C<data>
 parameter's API is not completely finalized.
@@ -1138,8 +1151,9 @@ same in future versions as well.
 See L</TODO> for more information about the data types that will be supported
 in the future.
 
-When thawing, the C<verify_digest> or C<verify_mac> methods will be used, with
-C<fatal> defaulting to on unless explicitly disabled in the parameters.
+When thawing, the C<authenticated_decrypt_string> or C<verify_mac> methods will
+be used, with C<fatal> defaulting to on unless explicitly disabled in the
+parameters.
 
 =over 4
 
@@ -1151,14 +1165,16 @@ By default this parameter is true, unless C<default_tamper_proof_unencrypted()>,
 has been enabled.
 
 A true value implies that all the parameters
-which are available to C<encrypt_string()> are also available.  If a
-negative value is specified, MAC mode is used, and the additional
+which are available to C<authenticated_encrypt_string()> are also available.
+If a negative value is specified, MAC mode is used, and the additional
 parameters of C<mac_digest_string()> may also be specified to this method.
 
 =item * data
 
 The data to encrypt. If this is a reference L<Storable> will be used to
 serialize the data.
+
+See C<pack_data> for details.
 
 =back
 
@@ -1172,8 +1188,15 @@ are also available.
 
 =item decrypt_string( [ $string ], %params )
 
+=item authenticated_encrypt_string( [ $string ], %params )
+
+=item authenticated_decrypt_string( [ $string ], %params )
+
 All of the parameters which may be supplied to C<process_key()>,
 C<cipher_object> and C<maybe_encode> are also available to these methods.
+
+The C<authenticated> variants ensure that an authenticated encryption mode
+(such as EAX) is used.
 
 The following parameters may be used:
 
@@ -1184,9 +1207,21 @@ The following parameters may be used:
 The string to be en/decrypted can either be supplied first, creating an odd
 number of arguments, or as a named parameter.
 
+=item * nonce
+
+The cryptographic nonce to use. Only necessary for encryption, will be packed
+in the string as part of the message if applicable.
+
+=item * header
+
+Not yet supported.
+
+In the future this will include a header for AEAD (the "associated data" bit of
+AEAD).
+
 =back
 
-=item process_key( $key, %params )
+=item process_key( [ $key ], %params )
 
 The following arguments may be specified:
 
@@ -1208,6 +1243,26 @@ Used to determine the key size.
 
 =back
 
+=item process_nonce( [ $nonce ], %params )
+
+If a nonce is explicitly specified this method returns that, and otherwise uses
+L<Data::GUID> to generate a unique binary string for use as a nonce/IV.
+
+=item pack_data( [ $data ], %params )
+
+=item unpack_data( [ $data ], %params )
+
+Uses L<Storable> and C<pack> to create a string out of data.
+
+L<MooseX::Storage> support will be added in the future.
+
+The format itself is versioned in order to facilitate future proofing and
+backwards compatibility.
+
+Note that it is not safe to call C<unpack_data> on an untrusted string, use
+C<thaw_tamper_proof> instead (it will authenticate the data and only then
+perform the potentially unsafe routines).
+
 =item cipher_object( %params )
 
 Available parameters are:
@@ -1216,14 +1271,41 @@ Available parameters are:
 
 =item * cipher
 
-The cipher algorithm to use.
+The cipher algorithm to use, e.g. C<Rijndael>, C<Twofish> etc.
 
 =item * mode
 
-The mode of operation (C<cbc>, C<cfb>).
+The mode of operation. This can be real (C<cbc>, C<cfb>, C<ctr>, C<ofb>,
+C<eax>) or symbolic (C<authenticated>, C<block>, C<stream>).
 
 See L<http://en.wikipedia.org/wiki/Block_cipher_modes_of_operation> for an
 explanation of this.
+
+=back
+
+=item cipher_object_eax( %params )
+
+Used by C<cipher_object> but accepts additional parameters:
+
+=over 4
+
+=item * nonce
+
+The nonce is a value that should be unique in order to protect against replay
+attacks. It also ensures that the same plain text with the same key will
+produce different ciphertexts.
+
+The nonce is not included in the output ciphertext. See
+C<authenticated_encrypt_string> for a convenience method that does include the
+nonce.
+
+=item * header
+
+This is additional data to authenticate but not encrypt.
+
+See L<Crypt::EAX> for more details.
+
+The header will not be included in the output ciphertext.
 
 =back
 
@@ -1332,13 +1414,13 @@ failures will return undef.
 
 =back
 
-=item mac_object
+=item mac_object( %params )
 
 =over 4
 
 =item * mac
 
-The MAC algorithm to use. Currently only C<hmac> is supported.
+The MAC algorithm to use. Currently C<hmac> and C<cmac> are supported.
 
 =back
 
@@ -1530,6 +1612,13 @@ Whether or not to encode by default (applies to digests and encryptions).
 
 The key to use. Useful for when you are repeatedly encrypting.
 
+=item * nonce
+
+The nonce/IV to use for cipher modes that require it.
+
+Defaults to the empty string, but note that some methods will generate a nonce
+for you (e.g. C<authenticated_encrypt_string>) if none was provided.
+
 =item * use_literal_key
 
 Whether or not to not hash the key by default. See C<process_key>.
@@ -1544,9 +1633,6 @@ Whether or not tamper resistent strings are by default unencrypted (just MAC).
 
 You may safely subclass and override C<default_PARAMETER> and
 C<fallback_PARAMETER_list> to provide values from configurations.
-
-Overriding the C<fallback_PARAMETER> method is also "allowed" but not
-reccomended.
 
 =back
 
