@@ -19,6 +19,11 @@ build_requires 'Test::More'      => 0;
 build_requires 'Test::use::ok'   => 0;
 build_requires 'Test::Exception' => 0;
 
+recommends 'MIME::Base64'          => 0;
+recommends 'MIME::Base64::URLSafe' => 0;
+recommends 'MIME::Base32'          => 0;
+recommends 'URI::Escape'           => 0;
+
 recommends 'Crypt::CFB' => 0; # stream ciphers
 recommends 'Crypt::CBC' => 0; # block ciphers
 
