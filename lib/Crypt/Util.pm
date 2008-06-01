@@ -787,7 +787,7 @@ sub authenticated_encrypt_string {
 		$self->_process_params( \%params, qw(nonce) );
 
 		# generate a nonce unless one is explicitly provided
-		my $nonce = $self->process_nonce(%params);
+		my $nonce = $self->process_nonce(%params); # FIMXE limit to 64k?
 
 		return pack("n/a a*", $nonce, $self->encrypt_string( %params, nonce => $nonce ) );
 	} else {
