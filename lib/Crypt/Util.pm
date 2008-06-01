@@ -8,8 +8,6 @@ our $VERSION = "0.07";
 use Digest;
 use Digest::MoreFallbacks;
 
-use Perl6::Junction qw(any);
-
 use Carp qw/croak/;
 
 use Sub::Exporter;
@@ -75,7 +73,9 @@ Sub::Exporter->import( -setup => {
 	},
 });
 
-our @KNOWN_AUTHENTICATING_MODES = qw(EAX OCB GCM CWC CCM),
+our @KNOWN_AUTHENTICATING_MODES = qw(EAX OCB GCM CWC CCM); # IACBC & IAPM will probably never be implemented
+
+our %KNOWN_AUTHENTICATING_MODES = map { $_ => 1 } @KNOWN_AUTHENTICATING_MODES;
 
 our %FALLBACK_LISTS = (
 	mode                    => [qw/CFB CBC Ctr OFB/],
@@ -703,7 +703,7 @@ sub _authenticated_mode {
 			return $params->{mode_is_authenticated};
 		}
 
-		if ( any( map { lc } @KNOWN_AUTHENTICATING_MODES ) eq lc($params->{mode}) ) {
+		if ( $KNOWN_AUTHENTICATING_MODES{uc($params->{mode})} ) {
 			return 1;
 		} else {
 			return;
