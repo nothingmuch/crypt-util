@@ -633,9 +633,10 @@ sub verify_mac {
 sub tamper_proof {
 	my ( $self, %params ) = _args @_, "data";
 
-	my $packed = $self->pack_data( %params );
+	$params{string} = $self->pack_data( %params );
+	#$params{header} = $self->pack_data( %params, data => $params{header} ) if exists $params{header}; # FIXME this is not yet finished
 
-	$self->tamper_proof_string( %params, string => $packed );
+	$self->tamper_proof_string( %params );
 }
 
 sub freeze_data {
@@ -788,6 +789,10 @@ sub authenticated_encrypt_string {
 
 		# generate a nonce unless one is explicitly provided
 		my $nonce = $self->process_nonce(%params); # FIMXE limit to 64k?
+
+		# FIXME safely encode an arbitrary header as well
+		#my $header = $params{header};
+		#$header = '' unless defined $header;
 
 		return pack("n/a a*", $nonce, $self->encrypt_string( %params, nonce => $nonce ) );
 	} else {
