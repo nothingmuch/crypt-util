@@ -1555,8 +1555,6 @@ Crypt::SaltedHash support
 
 =item *
 
-=item *
-
 EMAC (maybe, the modules are not OO and require refactoring) message
 authentication mode
 
