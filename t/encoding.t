@@ -24,6 +24,7 @@ my @strings = (
 SKIP: {
 	skip "URI::Escape required", @strings * 3 unless eval { require URI::Escape };
 	skip "MIME::Base64 required", @strings * 3 unless eval { require MIME::Base64 };
+	skip "MIME::Base64::URLSafe required", @strings * 3 unless eval { require MIME::Base64::URLSafe };
 
 	foreach my $string ( @strings ) { 
 		my $encoded = $c->encode_string_uri_base64( $string );

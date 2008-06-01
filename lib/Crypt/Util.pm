@@ -216,7 +216,7 @@ sub _try_loading_module {
 {
 	my %encoding_module = (
 		base64     => "MIME::Base64",
-		uri_base64 => "MIME::Base64",
+		uri_base64 => "MIME::Base64::URLSafe",
 		base32     => "MIME::Base32",
 		uri_escape => "URI::Escape",
 	);
@@ -934,17 +934,14 @@ sub decode_string_base64 {
 # http://www.dev411.com/blog/2006/10/02/encoding-hashed-uids-base64-vs-hex-vs-base32
 sub encode_string_uri_base64 {
 	my ( $self, $string ) = @_;
-	my $encoded = $self->encode_string_base64($string);
-	$encoded =~ tr{+/}{*-};
-	$encoded =~ s/=+$//;
-	return $encoded;
+	require MIME::Base64::URLSafe;
+	MIME::Base64::URLSafe::encode($string);
 }
 
 sub decode_string_uri_base64 {
 	my ( $self, $base64 ) = @_;
-	$base64 =~ tr{*-}{+/};
-	$base64 .= "=" x abs( - length($base64) % 4 );
-	$self->decode_string_base64($base64);
+	require MIME::Base64::URLSafe;
+	MIME::Base64::URLSafe::decode($base64);
 }
 
 sub encode_string_base32 {
