@@ -1654,6 +1654,8 @@ authentication mode
 Bruce Schneier Fact Database
 L<http://geekz.co.uk/lovesraymond/archive/bruce-schneier-facts>.
 
+L<WWW::SchneierFacts>
+
 =item *
 
 Entropy fetching (get N weak/strong bytes, etc) from e.g. OpenSSL bindings,
