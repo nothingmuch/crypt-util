@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 package Crypt::Util;
-use Moose;
+use Squirrel;
 
 our $VERSION = "0.08";
 
@@ -142,7 +142,7 @@ has disable_fallback => (
 	is  => "rw",
 );
 
-__PACKAGE__->meta->make_immutable;
+__PACKAGE__->meta->make_immutable if __PACKAGE__->meta->can("make_immutable");
 
 {
 	my %fallback_caches;
