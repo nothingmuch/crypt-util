@@ -1694,7 +1694,7 @@ Ann Barcomb
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2006 by Yuval Kogman E<lt>nothingmuch@woobling.orgE<gt>, Ann Barcomb
+Copyright 2006-2008 by Yuval Kogman E<lt>nothingmuch@woobling.orgE<gt>, Ann Barcomb
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
