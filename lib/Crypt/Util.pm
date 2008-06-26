@@ -794,7 +794,7 @@ sub authenticated_encrypt_string {
 		#my $header = $params{header};
 		#$header = '' unless defined $header;
 
-		return pack("n/a a*", $nonce, $self->encrypt_string( %params, nonce => $nonce ) );
+		return pack("n/a* a*", $nonce, $self->encrypt_string( %params, nonce => $nonce ) );
 	} else {
 		croak "To use encrypted tamper resistent strings an authenticated encryption mode such as EAX must be selected";
 	}
@@ -806,7 +806,7 @@ sub authenticated_decrypt_string {
 	if ( $self->_authenticated_mode(\%params) ) {
 		$self->_process_params( \%params, qw(string) );
 
-		my ( $nonce, $string ) = unpack("n/a a*", $params{string});
+		my ( $nonce, $string ) = unpack("n/a* a*", $params{string});
 
 		return $self->decrypt_string(
 			fatal => 1,
