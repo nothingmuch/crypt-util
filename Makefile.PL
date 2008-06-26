@@ -2,7 +2,7 @@
 
 use strict;
 
-use inc::Module::Install;
+use inc::Module::Install 0.75;
 
 name 'Crypt-Util';
 
