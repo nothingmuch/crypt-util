@@ -1,3 +1,17 @@
+0.08
+		- Use Squirrel instead of Moose for better startup time when Moose is
+		  not loaded
+		- Fix unpack/pack usage under 5.8
+		- Missing dependency fixed (namespace::clean)
+
+0.07
+		- Digest::CMAC support
+		- Crypt::EAX support
+		- nonce generation using L<Data::GUID>
+		- Moosified
+		- MIME::Base64::URLSafe support
+		- Skip certain tests when nonrequired modules are not available
+
 0.06
 		- Tamper resistence is now based on the authenticating crypto modes
 
