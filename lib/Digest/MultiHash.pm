@@ -1,11 +1,9 @@
 #!/usr/bin/perl
 
 package Digest::MultiHash;
+use Squirrel;
 
-use strict;
-use warnings;
-
-use base qw/Class::Accessor::Fast Digest::base/;
+extends our @ISA, qw(Digest::base);
 
 use Carp qw/croak/;
 
@@ -13,26 +11,28 @@ use Digest;
 use Digest::MoreFallbacks;
 use Scalar::Util qw/blessed/;
 
-__PACKAGE__->mk_accessors(qw/_digest_objects width/);
-__PACKAGE__->mk_ro_accessors(qw/hashes/);
+use namespace::clean -except => [qw(meta)];
 
-sub new {
-	my ( $class, @params ) = @_;
+has width => (
+	isa => "Int",
+	is  => "rw",
+);
 
-	if ( @params != 1 ) {
-		croak "You must supply an even sized list or a single hash reference to new" unless @params % 2 == 0;
-		@params = { @params };
-	}
+has hashes => (
+	isa => "ArrayRef",
+	is  => "ro",
+	required => 1,
+	default  => sub { [qw(SHA-1)] },
+);
 
-	if ( (ref($params[0])||'') ne "HASH" ) {
-		croak "You must supply an even sized list or a single hash reference to new";
-	}
+has _digest_objects => (
+	isa => "ArrayRef",
+	is  => "ro",
+	lazy_build => 1,
+);
 
-	my $self = $class->SUPER::new( @params );
-	
-	$self->_create_digest_objects;
-
-	return $self;
+sub BUILD {
+	shift->_digest_objects; # force building
 }
 
 sub _call {
@@ -40,7 +40,7 @@ sub _call {
 	map { $_->$method( @args ) } @{ $self->_digest_objects };
 }
 
-sub _create_digest_objects {
+sub _build__digest_objects {
 	my $self = shift;
 
 	my @digests = map {
@@ -51,20 +51,22 @@ sub _create_digest_objects {
 					? @$_
 					: $_
 			)
-	} @{ $self->hashes || [qw/SHA-1/] };
+	} @{ $self->hashes };
 
 	die "No digest module specified" unless @digests;
 
-	$self->_digest_objects(\@digests);
+	return \@digests;
 }
 
+# MooseX::Clone
 sub clone {
 	my $self = shift;
-	$self->new({
-		width => $self->width,
+
+	$self->new(
+		width  => $self->width,
 		hashes => $self->hashes,
 		_digest_objects => [ $self->_call("clone") ],
-	});
+	);
 }
 
 sub add {
