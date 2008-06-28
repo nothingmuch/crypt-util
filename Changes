@@ -1,3 +1,6 @@
+0.09
+		- Forgot to Moosify Class::Accessor::Fast
+
 0.08
 		- Use Squirrel instead of Moose for better startup time when Moose is
 		  not loaded
