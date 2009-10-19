@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 package Digest::MultiHash;
-use Squirrel;
+use Moose;
 
 extends our @ISA, qw(Digest::base);
 

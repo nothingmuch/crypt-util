@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 package Crypt::Util;
-use Squirrel;
+use Moose;
 
 our $VERSION = "0.09";
 
