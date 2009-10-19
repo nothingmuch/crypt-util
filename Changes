@@ -1,3 +1,7 @@
+0.10
+		- %Digest::MMAP contains scalars from version 1.16
+		- switch to Moose
+
 0.09
 		- Forgot to Moosify Class::Accessor::Fast
 
