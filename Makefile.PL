@@ -8,8 +8,7 @@ name 'Crypt-Util';
 
 perl_version '5.008';
 
-requires 'Mouse'                 => "0.04";
-requires 'Moose'                 => 0;
+requires 'Moose'                 => '0.92';
 requires 'Digest'                => 0;
 requires 'Sub::Exporter'         => 0;
 requires 'Storable'              => 0;
