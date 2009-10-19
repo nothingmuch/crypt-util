@@ -27,7 +27,7 @@ recommends 'URI::Escape'           => 0;
 recommends 'Crypt::CFB' => 0; # stream ciphers
 recommends 'Crypt::CBC' => 0; # block ciphers
 
-recommends 'Crypt::EAX' => 0; # AEAD mode
+recommends 'Crypt::EAX' => '0.04'; # AEAD mode
 
 recommends 'Crypt::Rijndael' => 0; # AES
 recommends 'Crypt::Serpent'  => 0; # AES finalist
