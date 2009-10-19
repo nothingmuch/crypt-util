@@ -5,13 +5,47 @@ package Digest::MoreFallbacks;
 use strict;
 use warnings;
 
-push @{ $Digest::MMAP{"RIPEMD160"} ||= $Digest::MMAP{"RIPEMD-160"} ||= [] }, "Crypt::RIPEMD160";
+use Digest ();
 
-foreach my $sha (1, 224, 256, 384, 512) {
-	push @{ $Digest::MMAP{"SHA$sha"} ||= $Digest::MMAP{"SHA-$sha"} ||= [] }, ["Digest::SHA::PurePerl", $sha];
+for ( $Digest::MMAP{"RIPEMD-160"} ) {
+	s/PIPE/RIPE/ if defined;
 }
 
-push @{ $Digest::MMAP{"MD5"} ||= [] }, "Digest::MD5", "Digest::Perl::MD5";
+_add_fallback($_, "Crypt::RIPEMD160") for "RIPEMD160", "RIPEMD-160";
+
+foreach my $sha (1, 224, 256, 384, 512) {
+	_add_fallback("SHA$sha", [ "Digest::SHA::PurePerl", $sha ]);
+	_add_fallback("SHA-$sha", [ "Digest::SHA::PurePerl", $sha ]);
+}
+
+_add_fallback(MD5 => $_) for qw(Digest::MD5 Digest::Perl::MD5);
+
+sub _add_fallback {
+	my ( $alg, @args ) = @_;
+
+	my $list;
+
+	if ( $list = $Digest::MMAP{$alg} ) {
+		unless ( ref $list eq 'ARRAY' ) {
+			$list = $Digest::MMAP{$alg} = [ $list ];
+		}
+	} else {
+		$list = $Digest::MMAP{$alg} = [];
+	}
+
+	_append_fallback($list, @args);
+}
+
+sub _append_fallback {
+	my ( $list, $impl ) = @_;
+
+	if ( ref $impl ) {
+		push @$list, $impl;
+	} else {
+		my %seen;
+		@$list = grep { ref($_) or !$seen{$_}++ } @$list, $impl;
+	}
+}
 
 __PACKAGE__;
 
