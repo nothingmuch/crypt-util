@@ -3,7 +3,7 @@
 package Crypt::Util;
 use Moose;
 
-our $VERSION = "0.10";
+our $VERSION = "0.11";
 
 use Digest;
 use Digest::MoreFallbacks;
