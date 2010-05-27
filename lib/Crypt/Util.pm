@@ -840,7 +840,7 @@ sub mac_tamper_proof_string {
 	return $self->_pack_hash_and_message( $hash, $string );
 }
 
-sub thaw_tamper_proof {
+sub thaw_tamper_proof_string {
 	my ( $self, %params ) = _args @_, "string";
 
 	my $string = delete $params{string};
@@ -851,6 +851,11 @@ sub thaw_tamper_proof {
 	my $method = "thaw_tamper_proof_string_$type";
 
 	my $packed = $self->$method( %params, string => $message );
+}
+
+sub thaw_tamper_proof {
+	my ( $self, %params ) = _args @_, "string";
+	my $packed = $self->thaw_tamper_proof_string(%params);
 	$self->unpack_data(%params, data => $packed);
 }
 
